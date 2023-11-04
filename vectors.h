@@ -1,15 +1,15 @@
 #include <math.h>
 
-typedef struct vec3
+typedef struct
 {
     double x;
     double y;
     double z;
-}
+} vec3;
 
 
-typedef struct vec2
+typedef struct
 {
     double x;
     double y;
-}
+} vec2;
