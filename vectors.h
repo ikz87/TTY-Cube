@@ -8,3 +8,8 @@ typedef struct vector3D
 }
 
 
+typedef struct vector2D
+{
+    double x;
+    double y;
+}
