@@ -1,6 +1,6 @@
 #include <math.h>
 
-typedef struct vector3D
+typedef struct vec3
 {
     double x;
     double y;
@@ -8,7 +8,7 @@ typedef struct vector3D
 }
 
 
-typedef struct vector2D
+typedef struct vec2
 {
     double x;
     double y;
