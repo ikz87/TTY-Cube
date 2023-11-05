@@ -1,11 +1,10 @@
-#include "config.h"
-vec2 screen_center = {SCREEN_WIDTH/2, SCREEN_HEIGHT/2};
-
 typedef struct camera
 {
     double focal_offset; // Distance along the Z axis between the camera 
                          // center and the focal point. Use negative values
                          // This kinda works like FOV in games
+
+    vec2 dimensions;
 
     // Transformations 
     // Use these to modify the coordinate system of the camera plane
@@ -21,6 +20,7 @@ typedef struct camera
     // ---------------------------------------------------------------// 
     
     // These will be set later with setup_camera()
+    vec2 center_offset;
     vec3 base_x;
     vec3 base_y;
     vec3 base_z;
@@ -31,6 +31,10 @@ typedef struct camera
 
 camera setup_camera(camera camera)
 {
+    // Get distance from the center of the camera to its
+    // top left pixel
+    camera.center_offset = scale_vec2(camera.dimensions, 0.5);
+
     // Apply translations
     camera.center_point = add_vec3(camera.center_point, camera.translations);
 
@@ -145,26 +149,29 @@ vec4 get_pixel_from_projection(float t, int face, camera camera, vec3 focal_vect
             cam_coords = (vec2){intersection.z, intersection.x};
             break;
     }
-    cam_coords.x += CUBE_SIDE_LENGTH/2;
-    cam_coords.y += CUBE_SIDE_LENGTH/2;
+    cam_coords.x += SIDE_LENGTH/2;
+    cam_coords.y += SIDE_LENGTH/2;
     
     // If pixel is outside of the region occupied by the cube
     // return a completely transparent color
-    if (cam_coords.x >=CUBE_SIDE_LENGTH || 
-        cam_coords.y >=CUBE_SIDE_LENGTH ||
+    if (cam_coords.x >=SIDE_LENGTH || 
+        cam_coords.y >=SIDE_LENGTH ||
         cam_coords.x <0 || cam_coords.y <0)
     {
         return (vec4){0,0,0,0};
     }
-    else if (cam_coords.x >=CUBE_SIDE_LENGTH-CUBE_SIDE_LENGTH/40 || 
-            cam_coords.y >=CUBE_SIDE_LENGTH-CUBE_SIDE_LENGTH/40 ||
-            cam_coords.x <CUBE_SIDE_LENGTH/40 || cam_coords.y <CUBE_SIDE_LENGTH/40)
+    // Make edges a different color
+    else if (cam_coords.x >=SIDE_LENGTH-EDGE_THICKNESS || 
+            cam_coords.y >=SIDE_LENGTH-EDGE_THICKNESS ||
+            cam_coords.x < EDGE_THICKNESS || cam_coords.y < EDGE_THICKNESS)
     {
-        return (vec4){0,0,0,1};
+        return EDGE_COLOR;
     }
 
-    // Fetch the pixel
-    vec4 pixel = (vec4){cam_coords.x/CUBE_SIDE_LENGTH, cam_coords.y/CUBE_SIDE_LENGTH, 1, 0.8};
+    // You can threat the code below as some sort of fragment shader that
+    // gets applied to every face of the cube
+    // Add whatever you want here
+    vec4 pixel = (vec4){cam_coords.x/SIDE_LENGTH, cam_coords.y/SIDE_LENGTH, 1, 0.8};
 
     return pixel;
 }
@@ -193,7 +200,7 @@ vec4 alpha_composite(vec4 color1, vec4 color2)
 vec4 get_pixel_through_camera(vec2 coords, camera camera)
 {
     // Offset coords
-    coords = subtract_vec2(coords, screen_center);
+    coords = subtract_vec2(coords, camera.center_offset);
 
     // Find the pixel 3d position using the camera vector basis
     vec3 pixel_3dposition = add_vec3(camera.center_point, 
@@ -214,9 +221,9 @@ vec4 get_pixel_through_camera(vec2 coords, camera camera)
     float c[] = {1,1,
                  0,0,
                  0,0};
-    float d[] = {-CUBE_SIDE_LENGTH/2.0,CUBE_SIDE_LENGTH/2.0,
-                 -CUBE_SIDE_LENGTH/2.0,CUBE_SIDE_LENGTH/2.0,
-                 -CUBE_SIDE_LENGTH/2.0,CUBE_SIDE_LENGTH/2.0};
+    float d[] = {-SIDE_LENGTH/2.0,SIDE_LENGTH/2.0,
+                 -SIDE_LENGTH/2.0,SIDE_LENGTH/2.0,
+                 -SIDE_LENGTH/2.0,SIDE_LENGTH/2.0};
 
     // Then there's a line going from our focal point to each of the planes 
     // which we can describe as:

@@ -54,12 +54,15 @@ int main(int argc, char *argv[])
         time++;
         time_cyclic = (time%100)/50.0;
         camera rotate_around_origin =
-        {-CUBE_SIDE_LENGTH*4,
+        {-SIDE_LENGTH*4,
+            (vec2){vinfo.xres, vinfo.yres},
             (vec3){PI/6*sin(2*time_cyclic*PI),-time_cyclic*PI-PI/2,0},
-            (vec3){cos(time_cyclic*PI)*CUBE_SIDE_LENGTH*4,
-                CUBE_SIDE_LENGTH*2*sin(2*time_cyclic*PI),
-                sin(time_cyclic*PI)*CUBE_SIDE_LENGTH*4},
+            (vec3){cos(time_cyclic*PI)*SIDE_LENGTH*4,
+                SIDE_LENGTH*2*sin(2*time_cyclic*PI),
+                sin(time_cyclic*PI)*SIDE_LENGTH*4},
             (vec3){1,1,1},
+
+            (vec2){0,0},
             (vec3){0,0,0},
             (vec3){0,0,0},
             (vec3){0,0,0},
@@ -67,16 +70,16 @@ int main(int argc, char *argv[])
             (vec3){0,0,0}};
         camera transformed_cam = setup_camera(rotate_around_origin);
 
-        for (int j = 0; j < SCREEN_HEIGHT; j++)
+        for (int j = 0; j < vinfo.yres; j++)
         {
-            for (int i = 0; i < SCREEN_WIDTH; i++)
+            for (int i = 0; i < vinfo.xres; i++)
             {
                 vec2 coords = {i, j};
                 vec4 color = get_pixel_through_camera(coords, transformed_cam);
-                fbp[(j*SCREEN_WIDTH+i)*4] = (unsigned int)(color.x * 255);
-                fbp[(j*SCREEN_WIDTH+i)*4+1] = (unsigned int)(color.y * 255);
-                fbp[(j*SCREEN_WIDTH+i)*4+2] = (unsigned int)(color.z * 255);
-                fbp[(j*SCREEN_WIDTH+i)*4+3] = (unsigned int)(color.w * 255);
+                fbp[(j*vinfo.xres+i)*4] = (unsigned int)(color.x * 255);
+                fbp[(j*vinfo.xres+i)*4+1] = (unsigned int)(color.y * 255);
+                fbp[(j*vinfo.xres+i)*4+2] = (unsigned int)(color.z * 255);
+                fbp[(j*vinfo.xres+i)*4+3] = (unsigned int)(color.w * 255);
 
             }
         }
