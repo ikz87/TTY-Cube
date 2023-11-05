@@ -168,10 +168,8 @@ vec4 get_pixel_from_projection(float t, int face, camera camera, vec3 focal_vect
         return EDGE_COLOR;
     }
 
-    // You can threat the code below as some sort of fragment shader that
-    // gets applied to every face of the cube
-    // Add whatever you want here
-    vec4 pixel = (vec4){cam_coords.x/SIDE_LENGTH, cam_coords.y/SIDE_LENGTH, 1, 0.8};
+    // Fetch pixel
+    vec4 pixel = fragment_shader(cam_coords);
 
     return pixel;
 }
