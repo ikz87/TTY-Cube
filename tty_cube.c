@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <math.h>
+#include <string.h>
 #include <linux/fb.h>
 #include "config.h"
 #include "vectors.h"
@@ -47,6 +48,7 @@ int main(int argc, char *argv[])
 
     int time = 0;
     double time_cyclic = 0;
+    char buffer[vinfo.xres * vinfo.yres * 4];
 
     while (1)
     {
@@ -75,13 +77,13 @@ int main(int argc, char *argv[])
             {
                 vec2 coords = {i, j};
                 vec4 color = get_pixel_through_camera(coords, transformed_cam);
-                fbp[(j*vinfo.xres+i)*4] = (unsigned int)(color.x * 255);
-                fbp[(j*vinfo.xres+i)*4+1] = (unsigned int)(color.y * 255);
-                fbp[(j*vinfo.xres+i)*4+2] = (unsigned int)(color.z * 255);
-                fbp[(j*vinfo.xres+i)*4+3] = (unsigned int)(color.w * 255);
-
+                buffer[(j*vinfo.xres+i)*4] = (unsigned int)(color.x * 255);
+                buffer[(j*vinfo.xres+i)*4+1] = (unsigned int)(color.y * 255);
+                buffer[(j*vinfo.xres+i)*4+2] = (unsigned int)(color.z * 255);
+                buffer[(j*vinfo.xres+i)*4+3] = (unsigned int)(color.w * 255);
             }
         }
+        memcpy(fbp, buffer, 4 * vinfo.xres * vinfo.yres);
     }
     munmap(fbp, screensize);
     close(fbfd);
