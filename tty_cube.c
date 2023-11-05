@@ -51,7 +51,7 @@ int main(int argc, char *argv[])
     while (1)
     {
         time++;
-        time_cyclic = (time%100)/50.0;
+        time_cyclic = (time%(1000/SPEED))/(1000/(SPEED)/2.0);
         camera rotate_around_origin =
         {-SIDE_LENGTH*4,
             (vec2){vinfo.xres, vinfo.yres},
