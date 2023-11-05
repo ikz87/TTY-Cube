@@ -19,9 +19,7 @@
 
 int main(int argc, char *argv[])
 {
-    const char* fbdev = "/dev/fb0";  // Adjust the path to your framebuffer device if needed
-
-    int fbfd = open(fbdev, O_RDWR);
+    int fbfd = open(FB_DEVICE, O_RDWR);
     if (fbfd == -1) {
         perror("Error opening framebuffer device");
         exit(1);
