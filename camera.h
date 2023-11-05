@@ -169,7 +169,7 @@ vec4 get_pixel_from_projection(float t, int face, camera camera, vec3 focal_vect
     }
 
     // Fetch pixel
-    vec4 pixel = fragment_shader(cam_coords);
+    vec4 pixel = fragment_shader(cam_coords, face);
 
     return pixel;
 }
