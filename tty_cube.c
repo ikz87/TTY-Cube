@@ -55,12 +55,12 @@ int main(int argc, char *argv[])
         time++;
         time_cyclic = (time%(1000/SPEED))/(1000/(SPEED)/2.0);
         camera rotate_around_origin =
-        {-SIDE_LENGTH*4,
+        {-SIDE_LENGTH,
             (vec2){vinfo.xres, vinfo.yres},
             (vec3){PI/6*sin(2*time_cyclic*PI),-time_cyclic*PI-PI/2,0},
-            (vec3){cos(time_cyclic*PI)*SIDE_LENGTH*4,
-                SIDE_LENGTH*2*sin(2*time_cyclic*PI),
-                sin(time_cyclic*PI)*SIDE_LENGTH*4},
+            (vec3){cos(time_cyclic*PI)*SIDE_LENGTH*2,
+                SIDE_LENGTH*sin(2*time_cyclic*PI),
+                sin(time_cyclic*PI)*SIDE_LENGTH*2},
             (vec3){1,1,1},
 
             (vec2){0,0},
