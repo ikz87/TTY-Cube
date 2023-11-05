@@ -246,7 +246,7 @@ vec4 get_pixel_through_camera(vec2 coords, camera camera)
     // Bubble sort to know which intersections happen first
     for (int i = 0; i < 6; i++)
     {
-        for (int j = 0; j < 6; j++)
+        for (int j = 0; j < 5; j++)
         {
             if (t [j].x > t[j+1].x)
             {
