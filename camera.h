@@ -29,6 +29,23 @@ typedef struct camera
 } camera;
 
 
+void insertion_sort(vec2 arr[], int n)
+{
+    for (int i = 1; i < n; i++)
+    {
+        vec2 tmp = arr[i];
+        int j = i - 1;
+
+    
+        while (tmp.x < arr[j].x && j >= 0)
+        {
+            arr[j + 1] = arr[j];
+            --j;
+        }
+        arr[j + 1] = tmp;
+    }
+}
+
 camera setup_camera(camera camera)
 {
     // Get distance from the center of the camera to its
@@ -210,16 +227,16 @@ vec4 get_pixel_through_camera(vec2 coords, camera camera)
 
     // We need 6 planes, one for each face of the cube, they all follow the plane EQ
     // ax + by + cz + d
-    float a[] = {0,0,
+    static const float a[] = {0,0,
                  1,1,
                  0,0};
-    float b[] = {0,0,
+    static const float b[] = {0,0,
                  0,0,
                  1,1};
-    float c[] = {1,1,
+    static const float c[] = {1,1,
                  0,0,
                  0,0};
-    float d[] = {-SIDE_LENGTH/2.0,SIDE_LENGTH/2.0,
+    static const float d[] = {-SIDE_LENGTH/2.0,SIDE_LENGTH/2.0,
                  -SIDE_LENGTH/2.0,SIDE_LENGTH/2.0,
                  -SIDE_LENGTH/2.0,SIDE_LENGTH/2.0};
 
@@ -244,6 +261,7 @@ vec4 get_pixel_through_camera(vec2 coords, camera camera)
     }
     
     // Bubble sort to know which intersections happen first
+    /*
     for (int i = 0; i < 6; i++)
     {
         for (int j = 0; j < 5; j++)
@@ -256,6 +274,9 @@ vec4 get_pixel_through_camera(vec2 coords, camera camera)
             }
         }
     }
+    */
+    insertion_sort(t, 6); 
+
 
     // Then we go through each one of the intersections in order 
     // and mix pixels together using alpha
