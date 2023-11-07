@@ -75,8 +75,7 @@ int main(int argc, char *argv[])
         {
             for (int i = 0; i < vinfo.xres; i++)
             {
-                vec2 coords = {i, j};
-                vec4 color = get_pixel_through_camera(coords, transformed_cam);
+                vec4 color = get_pixel_through_camera(i, j, transformed_cam);
                 buffer[(j*vinfo.xres+i)*4] = (unsigned int)(color.z * 255);
                 buffer[(j*vinfo.xres+i)*4+1] = (unsigned int)(color.y * 255);
                 buffer[(j*vinfo.xres+i)*4+2] = (unsigned int)(color.x * 255);

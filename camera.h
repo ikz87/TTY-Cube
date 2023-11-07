@@ -195,15 +195,16 @@ vec4 alpha_composite(vec4 color1, vec4 color2)
 
 // Gets a pixel through the camera using coords as coordinates in
 // the camera plane
-vec4 get_pixel_through_camera(vec2 coords, camera camera)
+vec4 get_pixel_through_camera(int x, int y, camera camera)
 {
     // Offset coords
-    coords = subtract_vec2(coords, camera.center_offset);
+    x -= camera.center_offset.x;
+    y -= camera.center_offset.y;
 
     // Find the pixel 3d position using the camera vector basis
     vec3 pixel_3dposition = add_vec3(camera.center_point, 
-                            add_vec3(scale_vec3(camera.base_x, coords.x),
-                                    scale_vec3(camera.base_y, coords.y)));
+                            add_vec3(scale_vec3(camera.base_x, x),
+                                    scale_vec3(camera.base_y, y)));
 
     // Get the vector going from the focal point to the pixel in 3d sapace
     vec3 focal_vector = subtract_vec3(pixel_3dposition, camera.focal_point);
