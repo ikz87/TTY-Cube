@@ -29,23 +29,6 @@ typedef struct camera
 } camera;
 
 
-void insertion_sort(vec2 arr[], int n)
-{
-    for (int i = 1; i < n; i++)
-    {
-        vec2 tmp = arr[i];
-        int j = i - 1;
-
-    
-        while (tmp.x < arr[j].x && j >= 0)
-        {
-            arr[j + 1] = arr[j];
-            --j;
-        }
-        arr[j + 1] = tmp;
-    }
-}
-
 camera setup_camera(camera camera)
 {
     // Get distance from the center of the camera to its
@@ -248,6 +231,11 @@ vec4 get_pixel_through_camera(vec2 coords, camera camera)
     // We substitute x, y and z with x(t), y(t) and z(t) in the plane EQ
     // Solving for t we get:
     vec2 t[6]; // we use a vec2 to also store the plane that was hit
+
+    vec4 projection_pixels[6]; 
+    vec4 blended_pixels = (vec4){0,0,0,0};
+    int last_valid_t = 0;
+
     for (int i = 0; i < 6; i++)
     {
         t[i].x = (d[i] 
@@ -258,41 +246,29 @@ vec4 get_pixel_through_camera(vec2 coords, camera camera)
                     + b[i]*focal_vector.y 
                     + c[i]*focal_vector.z);
         t[i].y = i;
-    }
-    
-    // Bubble sort to know which intersections happen first
-    /*
-    for (int i = 0; i < 6; i++)
-    {
-        for (int j = 0; j < 5; j++)
-        {
-            if (t [j].x > t[j+1].x)
-            {
-                vec2 tmp = t[j];
-                t[j] = t[j+1];
-                t[j+1] = tmp;
-            }
-        }
-    }
-    */
-    insertion_sort(t, 6); 
 
-
-    // Then we go through each one of the intersections in order 
-    // and mix pixels together using alpha
-    vec4 blended_pixels = (vec4){0,0,0,0};
-    for (int i = 0; i < 6; i++)
-    {
         // We get the pixel through projection
-        vec4 projection_pixel = get_pixel_from_projection(t[i].x, 
-                                                          round(t[i].y),
-                                                          camera,
-                                                          focal_vector);
-        // Only blend non fully transparent pixels
-        if (projection_pixel.w > 0.0)
+        projection_pixels[i] = get_pixel_from_projection(t[i].x, 
+                round(t[i].y),
+                camera,
+                focal_vector);
+
+        // Check if pixel is not completely transparent
+        if (projection_pixels[i].w > 0)
         {
-            // Blend the pixel using alpha
-            blended_pixels = alpha_composite(projection_pixel, blended_pixels);
+            // Blend the 2 pixels that got hit by our focal vector
+            if (t[i].x > t[last_valid_t].x)
+            {
+                blended_pixels = alpha_composite(projection_pixels[i],
+                        projection_pixels[last_valid_t]);
+            }
+            else if (t[i].x < t[last_valid_t].x)
+            {
+                blended_pixels = alpha_composite(projection_pixels[last_valid_t],
+                        projection_pixels[i]);
+            }
+
+            last_valid_t = i;
         }
     }
     return blended_pixels;
