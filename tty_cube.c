@@ -11,7 +11,7 @@
 #include <linux/fb.h>
 #include "config.h"
 #include "vectors.h"
-#include "fragment_shader.h"
+#include "fragment_shaders.h"
 #include "camera.h"
 
 
