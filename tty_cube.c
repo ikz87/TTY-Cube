@@ -18,6 +18,16 @@
 #define PI 3.14159265
 
 
+void paint_pixel(int x, int y, vec4 color, char buffer[], struct fb_var_screeninfo vinfo)
+{
+    buffer[(y*vinfo.xres+x)*4] = (unsigned int)(color.z * 255);
+    buffer[(y*vinfo.xres+x)*4+1] = (unsigned int)(color.y * 255);
+    buffer[(y*vinfo.xres+x)*4+2] = (unsigned int)(color.x * 255);
+    buffer[(y*vinfo.xres+x)*4+3] = (unsigned int)(87);
+    return;
+}
+
+
 int main(int argc, char *argv[])
 {
     int fbfd = open(FB_DEVICE, O_RDWR);
@@ -50,6 +60,7 @@ int main(int argc, char *argv[])
     double time_cyclic = 0;
     char buffer[vinfo.xres * vinfo.yres * 4];
 
+    memcpy(buffer, fbp, 4 * vinfo.xres * vinfo.yres);
     while (1)
     {
         time++;
@@ -75,11 +86,33 @@ int main(int argc, char *argv[])
         {
             for (int i = 0; i < vinfo.xres; i++)
             {
-                vec4 color = get_pixel_through_camera(i, j, transformed_cam);
-                buffer[(j*vinfo.xres+i)*4] = (unsigned int)(color.z * 255);
-                buffer[(j*vinfo.xres+i)*4+1] = (unsigned int)(color.y * 255);
-                buffer[(j*vinfo.xres+i)*4+2] = (unsigned int)(color.x * 255);
-                buffer[(j*vinfo.xres+i)*4+3] = (unsigned int)(color.w * 255);
+                if (RENDER_OVER_TEXT)
+                {
+                    vec4 color = get_pixel_through_camera(i, j, transformed_cam);
+                    paint_pixel(i, j, color, buffer, vinfo);
+                }
+                else
+                {
+                    // Don't paint over tty text
+                    vec4 fb_color = {buffer[(j*vinfo.xres+i)*4],
+                        buffer[(j*vinfo.xres+i)*4+1],
+                        buffer[(j*vinfo.xres+i)*4+2],
+                        buffer[(j*vinfo.xres+i)*4+3]};
+                    if (fb_color.x == 0 &&
+                        fb_color.y == 0 &&
+                        fb_color.z == 0)
+                    {
+                        vec4 color = get_pixel_through_camera(i, j, transformed_cam);
+                        paint_pixel(i, j, color, buffer, vinfo);
+                    }
+                    // Also repaint previously painted pixels
+                    // (marked by w = 87)
+                    else if (fb_color.w == 87)
+                    {
+                        vec4 color = get_pixel_through_camera(i, j, transformed_cam);
+                        paint_pixel(i, j, color, buffer, vinfo);
+                    }
+                }
             }
         }
         memcpy(fbp, buffer, 4 * vinfo.xres * vinfo.yres);
