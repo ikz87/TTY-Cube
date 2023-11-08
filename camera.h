@@ -154,15 +154,15 @@ vec4 get_pixel_from_projection(float t, int face, camera camera, vec3 focal_vect
     
     // If pixel is outside of the region occupied by the cube
     // return a completely transparent color
-    if (cam_coords.x >=SIDE_LENGTH || 
-        cam_coords.y >=SIDE_LENGTH ||
+    if (cam_coords.x > SIDE_LENGTH - 1 || 
+        cam_coords.y > SIDE_LENGTH - 1 ||
         cam_coords.x <0 || cam_coords.y <0)
     {
         return (vec4){0,0,0,0};
     }
     // Make edges a different color
-    else if (cam_coords.x >=SIDE_LENGTH-EDGE_THICKNESS || 
-            cam_coords.y >=SIDE_LENGTH-EDGE_THICKNESS ||
+    else if (cam_coords.x > SIDE_LENGTH - EDGE_THICKNESS - 1 || 
+            cam_coords.y > SIDE_LENGTH - EDGE_THICKNESS - 1 ||
             cam_coords.x < EDGE_THICKNESS || cam_coords.y < EDGE_THICKNESS)
     {
         return EDGE_COLOR;
