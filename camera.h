@@ -220,9 +220,9 @@ vec4 get_pixel_through_camera(int x, int y, camera camera)
     static const float c[] = {1,1,
                  0,0,
                  0,0};
-    static const float d[] = {-SIDE_LENGTH/2.0,SIDE_LENGTH/2.0,
-                 -SIDE_LENGTH/2.0,SIDE_LENGTH/2.0,
-                 -SIDE_LENGTH/2.0,SIDE_LENGTH/2.0};
+    static const float d[] = {-SIDE_LENGTH/2.0,SIDE_LENGTH/2.0 - 1,
+                 -SIDE_LENGTH/2.0,SIDE_LENGTH/2.0 - 1,
+                 -SIDE_LENGTH/2.0,SIDE_LENGTH/2.0 - 1};
 
     // Then there's a line going from our focal point to each of the planes 
     // which we can describe as:
