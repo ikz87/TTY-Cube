@@ -115,6 +115,9 @@ int main(int argc, char *argv[])
                 }
             }
         }
+        // For some reason, the fb doesn't update fast enough
+        // unless we print something first
+        printf("\n\b");
         memcpy(fbp, buffer, 4 * vinfo.xres * vinfo.yres);
     }
     munmap(fbp, screensize);
