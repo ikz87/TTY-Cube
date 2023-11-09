@@ -13,6 +13,7 @@
 #include "vectors.h"
 #include "fragment_shaders.h"
 #include "camera.h"
+#include "blur.h"
 
 
 #define PI 3.14159265
@@ -115,10 +116,17 @@ int main(int argc, char *argv[])
                 }
             }
         }
+
+        // Somewhat remove aliasing applying a gaussian blur
+        if (BLUR_ANTIALIAS)
+        {
+            blur_pixels(buffer, vinfo.xres, vinfo.yres); 
+        }
+
         // For some reason, the fb doesn't update fast enough
         // unless we print something first
-        printf("\n\b");
         memcpy(fbp, buffer, 4 * vinfo.xres * vinfo.yres);
+        printf("\0");
     }
     munmap(fbp, screensize);
     close(fbfd);

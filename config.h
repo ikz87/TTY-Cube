@@ -1,5 +1,6 @@
 #define FB_DEVICE "/dev/fb0"
 #define RENDER_OVER_TEXT 0
+#define BLUR_ANTIALIAS 1
 #define SPEED 10
 #define SIDE_LENGTH 800
 #define EDGE_THICKNESS 50
