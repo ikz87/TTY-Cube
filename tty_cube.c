@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <math.h>
 #include <string.h>
+#include <signal.h>
 #include <linux/fb.h>
 #include "config.h"
 #include "vectors.h"
@@ -18,6 +19,13 @@
 
 #define PI 3.14159265
 
+volatile sig_atomic_t done = 0;
+ 
+void term(int signum)
+{
+    done = 1;
+}
+ 
 
 void paint_pixel(int x, int y, vec4 color, char buffer[], struct fb_var_screeninfo vinfo)
 {
@@ -31,6 +39,12 @@ void paint_pixel(int x, int y, vec4 color, char buffer[], struct fb_var_screenin
 
 int main(int argc, char *argv[])
 {
+    struct sigaction action;
+    memset(&action, 0, sizeof(struct sigaction));
+    action.sa_handler = term;
+    sigaction(SIGTERM, &action, NULL);
+    sigaction(SIGINT, &action, NULL);
+
     int fbfd = open(FB_DEVICE, O_RDWR);
     if (fbfd == -1) {
         perror("Error opening framebuffer device");
@@ -62,7 +76,7 @@ int main(int argc, char *argv[])
     char buffer[vinfo.xres * vinfo.yres * 4];
 
     memcpy(buffer, fbp, 4 * vinfo.xres * vinfo.yres);
-    while (1)
+    while (!done)
     {
         time++;
         time_cyclic = (time%(1000/SPEED))/(1000/(SPEED)/2.0);
