@@ -125,7 +125,12 @@ int main(int argc, char *argv[])
 
         // For some reason, the fb doesn't update fast enough
         // unless we print something first
-        printf("\n\b");
+        for (int i = 0; i < 100; ++i)
+        {
+            // Print without really moving anything
+            printf("\r%3i%%", i);
+            fflush(stdout);
+        }
         memcpy(fbp, buffer, 4 * vinfo.xres * vinfo.yres);
     }
     munmap(fbp, screensize);
