@@ -107,9 +107,9 @@ int main(int argc, char *argv[])
 
         // Define the light source
         light = (light3){(vec3){1,1,1},
-            (vec3){cos(time_cyclic*PI)*SIDE_LENGTH*10,
-                SIDE_LENGTH*5*sin(2*time_cyclic*PI),
-                sin(time_cyclic*PI)*SIDE_LENGTH*10}};
+            (vec3){cos(time_cyclic*PI)*SIDE_LENGTH,
+                SIDE_LENGTH*sin(2*time_cyclic*PI)/2,
+                sin(time_cyclic*PI)*SIDE_LENGTH}};
 
 
         for (int j = 0; j < vinfo.yres; j++)
