@@ -6,7 +6,7 @@
 #define SIDE_LENGTH 800
 #define EDGE_THICKNESS 50
 #define EDGE_COLOR (vec4){1,1,1,1}
-#define SHADER solid_white
+#define SHADER gradient
 // Supported shaders:
 // solid_white
 // gradient
