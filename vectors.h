@@ -154,3 +154,14 @@ vec4 multiply_vec4(vec4 a, vec4 b) {
     return a;
 }
 
+double dot_product_vec2(vec2 a, vec2 b) {
+    return a.x * b.x + a.y * b.y;
+}
+
+double dot_product_vec3(vec3 a, vec3 b) {
+    return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+double dot_product_vec4(vec4 a, vec4 b) {
+    return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
+}

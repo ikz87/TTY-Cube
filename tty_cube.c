@@ -13,6 +13,7 @@
 #include "config.h"
 #include "vectors.h"
 #include "fragment_shaders.h"
+#include "light.h"
 #include "camera.h"
 #include "blur.h"
 
@@ -75,13 +76,20 @@ int main(int argc, char *argv[])
     double time_cyclic = 0;
     char buffer[vinfo.xres * vinfo.yres * 4];
 
+    // Save the current state of the fb
     memcpy(buffer, fbp, 4 * vinfo.xres * vinfo.yres);
+
+    // Declare camera and light
+    camera rotate_around_origin;
+    light3 light;
+
     while (!done)
     {
         time++;
         time_cyclic = (time%(1000/SPEED))/(1000/(SPEED)/2.0);
-        camera rotate_around_origin =
-        {-SIDE_LENGTH,
+
+        // Define the camera
+        rotate_around_origin = (camera){-SIDE_LENGTH,
             (vec2){vinfo.xres, vinfo.yres},
             (vec3){PI/6*sin(2*time_cyclic*PI),-time_cyclic*PI-PI/2,0},
             (vec3){cos(time_cyclic*PI)*SIDE_LENGTH*2,
@@ -97,13 +105,20 @@ int main(int argc, char *argv[])
             (vec3){0,0,0}};
         camera transformed_cam = setup_camera(rotate_around_origin);
 
+        // Define the light source
+        light = (light3){(vec3){1,1,1},
+            (vec3){cos(time_cyclic*PI)*SIDE_LENGTH*10,
+                SIDE_LENGTH*5*sin(2*time_cyclic*PI),
+                sin(time_cyclic*PI)*SIDE_LENGTH*10}};
+
+
         for (int j = 0; j < vinfo.yres; j++)
         {
             for (int i = 0; i < vinfo.xres; i++)
             {
                 if (RENDER_OVER_TEXT)
                 {
-                    vec4 color = get_pixel_through_camera(i, j, transformed_cam);
+                    vec4 color = get_pixel_through_camera(i, j, transformed_cam, light);
                     paint_pixel(i, j, color, buffer, vinfo);
                 }
                 else
@@ -117,14 +132,14 @@ int main(int argc, char *argv[])
                         fb_color.y == 0 &&
                         fb_color.z == 0)
                     {
-                        vec4 color = get_pixel_through_camera(i, j, transformed_cam);
+                        vec4 color = get_pixel_through_camera(i, j, transformed_cam, light);
                         paint_pixel(i, j, color, buffer, vinfo);
                     }
                     // Also repaint previously painted pixels
                     // (marked by w = 87)
                     else if (fb_color.w == 87)
                     {
-                        vec4 color = get_pixel_through_camera(i, j, transformed_cam);
+                        vec4 color = get_pixel_through_camera(i, j, transformed_cam, light);
                         paint_pixel(i, j, color, buffer, vinfo);
                     }
                 }

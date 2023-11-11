@@ -113,7 +113,7 @@ camera setup_camera(camera camera)
 
 
 // Gets a pixel from the end of a ray projected to an axis
-vec4 get_pixel_from_projection(float t, int face, camera camera, vec3 focal_vector)
+vec4 get_pixel_from_projection(float t, int face, camera camera, vec3 focal_vector, light3 light)
 {
     // If the point we end up in is behind our camera, don't "render" it
     if (t < 1)
@@ -125,28 +125,35 @@ vec4 get_pixel_from_projection(float t, int face, camera camera, vec3 focal_vect
     vec3 intersection = add_vec3(scale_vec3(focal_vector, t), camera.focal_point);
     
 
-    // Save necessary coordinates
+    // Save necessary coordinates and normal vector
     // (different cube faces need different coords)
     vec2 cam_coords;
+    vec3 normal;
     switch (face) 
     {
         case 0:
             cam_coords = (vec2){intersection.x, intersection.y};
+            normal = (vec3){0, 0, 1};
             break;
         case 1:
             cam_coords = (vec2){intersection.x, intersection.y};
+            normal = (vec3){0, 0, -1};
             break;
         case 2:
             cam_coords = (vec2){intersection.z, intersection.y};
+            normal = (vec3){1, 0, 0};
             break;
         case 3:
             cam_coords = (vec2){intersection.z, intersection.y};
+            normal = (vec3){-1, 0, 0};
             break;
         case 4:
             cam_coords = (vec2){intersection.z, intersection.x};
+            normal = (vec3){0, 1, 0};
             break;
         case 5:
             cam_coords = (vec2){intersection.z, intersection.x};
+            normal = (vec3){0, -1, 0};
             break;
     }
     cam_coords.x += SIDE_LENGTH/2;
@@ -170,6 +177,18 @@ vec4 get_pixel_from_projection(float t, int face, camera camera, vec3 focal_vect
 
     // Fetch pixel
     vec4 pixel = SHADER(cam_coords, face);
+
+    // Apply shading 
+    if (SHADING)
+    {
+        double base_light = 0.5;
+        vec3 incident = normalize_vec3(subtract_vec3(light.position, intersection));
+        double dot = dot_product_vec3(incident, normal);
+        vec3 curr_light_color = scale_vec3(light.color, (dot-base_light)/(-1-base_light));
+        pixel.x *= fmin(fmax(0,curr_light_color.x),1);
+        pixel.y *= fmin(fmax(0,curr_light_color.y),1);
+        pixel.z *= fmin(fmax(0,curr_light_color.z),1);
+    }
 
     return pixel;
 }
@@ -195,7 +214,7 @@ vec4 alpha_composite(vec4 color1, vec4 color2)
 
 // Gets a pixel through the camera using coords as coordinates in
 // the camera plane
-vec4 get_pixel_through_camera(int x, int y, camera camera)
+vec4 get_pixel_through_camera(int x, int y, camera camera, light3 light)
 {
     // Offset coords
     x -= camera.center_offset.x;
@@ -252,7 +271,7 @@ vec4 get_pixel_through_camera(int x, int y, camera camera)
         projection_pixels[i] = get_pixel_from_projection(t[i].x, 
                 round(t[i].y),
                 camera,
-                focal_vector);
+                focal_vector, light);
 
         // Check if pixel is not completely transparent
         if (projection_pixels[i].w > 0)
