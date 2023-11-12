@@ -30,6 +30,10 @@ void term(int signum)
 
 void paint_pixel(int x, int y, vec4 color, char buffer[], struct fb_var_screeninfo vinfo)
 {
+    color.x = fmin(fmax(color.x, 0), 1);
+    color.y = fmin(fmax(color.y, 0), 1);
+    color.z = fmin(fmax(color.z, 0), 1);
+    color.w = fmin(fmax(color.w, 0), 1);
     buffer[(y*vinfo.xres+x)*4] = (unsigned int)(color.z * 255);
     buffer[(y*vinfo.xres+x)*4+1] = (unsigned int)(color.y * 255);
     buffer[(y*vinfo.xres+x)*4+2] = (unsigned int)(color.x * 255);
@@ -106,15 +110,11 @@ int main(int argc, char *argv[])
         camera transformed_cam = setup_camera(rotate_around_origin);
 
         // Define the light source
-        vec3 light_offset = (vec3){SIDE_LENGTH*10, -SIDE_LENGTH*5, -SIDE_LENGTH*10};
-        light = (light3){(vec3){1,1,1},
-            add_vec3(transformed_cam.center_point,
-                    add_vec3(
-                        add_vec3(
-                            scale_vec3(transformed_cam.base_x, light_offset.x), 
-                            scale_vec3(transformed_cam.base_y, light_offset.y)),
-                        scale_vec3(transformed_cam.base_z, light_offset.z)))};
 
+        light = (light3){(vec3){1,1,1},
+            (vec3){cos(time_cyclic*PI)*SIDE_LENGTH*10,
+                SIDE_LENGTH*5*sin(2*time_cyclic*PI),
+                sin(time_cyclic*PI)*SIDE_LENGTH*10}};
 
         for (int j = 0; j < vinfo.yres; j++)
         {

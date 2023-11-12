@@ -184,13 +184,32 @@ vec4 get_pixel_from_projection(float t, int face, camera camera, vec3 focal_vect
     // Apply shading 
     if (SHADING)
     {
+        // Diffuse lighting
         double base_light = 0.3;
         vec3 incident = normalize_vec3(subtract_vec3(light.position, intersection));
-        double dot = fmin(dot_product_vec3(incident, normal),0);
-        vec3 curr_light_color = scale_vec3(light.color, (dot-base_light)/(-1-base_light));
-        pixel.x *= fmin(fmax(0,curr_light_color.x),1);
-        pixel.y *= fmin(fmax(0,curr_light_color.y),1);
-        pixel.z *= fmin(fmax(0,curr_light_color.z),1);
+        double dot = dot_product_vec3(incident, normal);
+        vec3 diffuse = scale_vec3(light.color, (fmin(dot,0)-base_light)/(-1-base_light));
+        pixel.x *= diffuse.x;
+        pixel.y *= diffuse.y;
+        pixel.z *= diffuse.z;
+
+        // Specular highlight
+        if (SPECULAR_HIGHLIGHT)
+        {
+            double smoothness = 0.8;
+            vec3 reflected = subtract_vec3(incident, scale_vec3(normal, 2*dot));
+            vec3 highlight = scale_vec3(light.color, 
+                    (fmax(0,dot_product_vec3(normalize_vec3(focal_vector), reflected))));
+            highlight.x = pow(highlight.x, smoothness * 100);
+            highlight.y = pow(highlight.y, smoothness * 100);
+            highlight.z = pow(highlight.z, smoothness * 100);
+            pixel.x += highlight.x;
+            pixel.y += highlight.y;
+            pixel.z += highlight.z;
+        }
+
+        // The shading model doesn't support transparency
+        pixel.w = 1;
     }
 
     return pixel;
