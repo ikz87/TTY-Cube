@@ -106,10 +106,14 @@ int main(int argc, char *argv[])
         camera transformed_cam = setup_camera(rotate_around_origin);
 
         // Define the light source
+        vec3 light_offset = (vec3){SIDE_LENGTH*10, -SIDE_LENGTH*5, -SIDE_LENGTH*10};
         light = (light3){(vec3){1,1,1},
-            (vec3){cos(time_cyclic*PI)*SIDE_LENGTH,
-                SIDE_LENGTH*sin(2*time_cyclic*PI)/2,
-                sin(time_cyclic*PI)*SIDE_LENGTH}};
+            add_vec3(transformed_cam.center_point,
+                    add_vec3(
+                        add_vec3(
+                            scale_vec3(transformed_cam.base_x, light_offset.x), 
+                            scale_vec3(transformed_cam.base_y, light_offset.y)),
+                        scale_vec3(transformed_cam.base_z, light_offset.z)))};
 
 
         for (int j = 0; j < vinfo.yres; j++)

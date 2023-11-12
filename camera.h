@@ -184,9 +184,9 @@ vec4 get_pixel_from_projection(float t, int face, camera camera, vec3 focal_vect
     // Apply shading 
     if (SHADING)
     {
-        double base_light = 0.4;
+        double base_light = 0.3;
         vec3 incident = normalize_vec3(subtract_vec3(light.position, intersection));
-        double dot = dot_product_vec3(incident, normal);
+        double dot = fmin(dot_product_vec3(incident, normal),0);
         vec3 curr_light_color = scale_vec3(light.color, (dot-base_light)/(-1-base_light));
         pixel.x *= fmin(fmax(0,curr_light_color.x),1);
         pixel.y *= fmin(fmax(0,curr_light_color.y),1);
