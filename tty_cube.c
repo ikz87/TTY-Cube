@@ -221,7 +221,7 @@ int main(int argc, char *argv[])
         // Somewhat remove aliasing applying a gaussian blur
         if (BLUR_ANTIALIAS)
         {
-            blur_pixels(buffer, vinfo.xres, vinfo.yres); 
+            blur_pixels(buffer, min_coords, max_coords, vinfo.xres, vinfo.yres);
         }
 
         // For some reason, the fb doesn't update fast enough

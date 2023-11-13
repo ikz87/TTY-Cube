@@ -4,11 +4,11 @@ int kernel[3][3] = { { 4, 8, 4},
 
 int radius = 1;
 
-void blur_pixels(char pixels[], int x, int y)
+void blur_pixels(char pixels[], vec2 min_coords, vec2 max_coords, int x, int y)
 {
-    for (int j = 0; j < y; j++)
+    for (int j = min_coords.y; j <=max_coords.y; j++)
     {
-        for (int i = 0; i < x; i++)
+        for (int i = min_coords.x; i <=max_coords.x; i++)
         {
             unsigned char total[] = {0,
                     0,
