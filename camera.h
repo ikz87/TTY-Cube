@@ -185,7 +185,7 @@ vec4 get_pixel_from_projection(float t, int face, camera camera, vec3 focal_vect
     if (SHADING)
     {
         // Diffuse lighting
-        double base_light = 0.1;
+        double base_light = 0.2;
         vec3 incident = normalize_vec3(subtract_vec3(light.position, intersection));
         double dot = dot_product_vec3(incident, normal);
         vec3 diffuse = scale_vec3(light.color, (fmin(dot,0)-base_light)/(-1-base_light));
@@ -196,7 +196,7 @@ vec4 get_pixel_from_projection(float t, int face, camera camera, vec3 focal_vect
         // Specular highlight
         if (SPECULAR_HIGHLIGHT)
         {
-            double smoothness = 0.8;
+            double smoothness = 0.2;
             vec3 reflected = subtract_vec3(incident, scale_vec3(normal, 2*dot));
             vec3 highlight = scale_vec3(light.color, 
                     (fmax(0,dot_product_vec3(normalize_vec3(focal_vector), reflected))));
