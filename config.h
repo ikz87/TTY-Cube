@@ -8,7 +8,7 @@
 #define SIDE_LENGTH 800
 #define EDGE_THICKNESS 50
 #define EDGE_COLOR (vec4){1,1,1,1}
-#define SHADER checker_pattern
+#define SHADER image
 // Supported shaders:
 // solid_white
 // gradient
@@ -17,9 +17,8 @@
 // ------------------
 // Check fragment_shaders.h for more info
 
-// To use an image on the faces of the
-// cube, first get an image with dimensions
-// SIDE_LENGTH by SIDE_LENGTH
-// Then run `python ./image_to_binary_data.py <image_path>`
-// Finally, uncomment the line below and recompile
-// #define IMAGE "image.dat"
+// To use an image on the faces of the cube:
+// 1. Set SHADER to image
+// 2. Run `./setup_image.sh <path_to_image>`
+// 3. Uncomment the line below
+#define IMAGE "image.dat"
