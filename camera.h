@@ -301,13 +301,27 @@ vec4 get_pixel_through_camera(int x, int y, camera camera, light3 light)
             // Blend the 2 pixels that got hit by our focal vector
             if (t[i].x > t[last_valid_t].x)
             {
-                blended_pixels = alpha_composite(projection_pixels[i],
-                        projection_pixels[last_valid_t]);
+                if (!SHADING)
+                {
+                    blended_pixels = alpha_composite(projection_pixels[i],
+                            projection_pixels[last_valid_t]);
+                }
+                else
+                {
+                    blended_pixels = projection_pixels[last_valid_t];
+                }
             }
             else if (t[i].x < t[last_valid_t].x)
             {
-                blended_pixels = alpha_composite(projection_pixels[last_valid_t],
-                        projection_pixels[i]);
+                if (!SHADING)
+                {
+                    blended_pixels = alpha_composite(projection_pixels[last_valid_t],
+                            projection_pixels[i]);
+                }
+                else
+                {
+                    blended_pixels = projection_pixels[i];
+                }
             }
 
             last_valid_t = i;
