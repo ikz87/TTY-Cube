@@ -8,7 +8,7 @@
 #define SIDE_LENGTH 800
 #define EDGE_THICKNESS 50
 #define EDGE_COLOR (vec4){1,1,1,1}
-#define SHADER image
+#define SHADER checker_pattern
 // Supported shaders:
 // solid_white
 // gradient
@@ -21,4 +21,4 @@
 // 1. Set SHADER to image
 // 2. Run `./setup_image.sh <path_to_image>`
 // 3. Uncomment the line below
-#define IMAGE "image.dat"
+// #define IMAGE "image.dat"
