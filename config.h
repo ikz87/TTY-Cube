@@ -1,5 +1,6 @@
 #define FB_DEVICE "/dev/fb0"
 #define RENDER_OVER_TEXT 0
+#define RENDER_BOUNDING_BOX 0
 #define BLUR_ANTIALIAS 1
 #define SHADING 1
 #define SPECULAR_HIGHLIGHT 1 // SADING has to be on for this to work
