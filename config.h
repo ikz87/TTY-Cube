@@ -3,7 +3,7 @@
 #define RENDER_BOUNDING_BOX 0
 #define BLUR_ANTIALIAS 1
 #define SHADING 1
-#define SPECULAR_HIGHLIGHT 1 // SADING has to be on for this to work
+#define SPECULAR_HIGHLIGHT 1 // SHADING has to be on for this to work
 #define SPEED 10
 #define SIDE_LENGTH 800
 #define EDGE_THICKNESS 50
