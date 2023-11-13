@@ -14,8 +14,11 @@ width, height = input_image.size
 with open("image.dat", "wb") as file:
     for j in range(height):
         for i in range(width):
-        # getting the RGB pixel value. 
-            r, g, b = input_image.getpixel((i, j))
+            # getting the RGB pixel value. 
+            try:
+                r, g, b = input_image.getpixel((i, j))
+            except:
+                r, g, b, a = input_image.getpixel((i, j))
             file.write(r.to_bytes())
             file.write(g.to_bytes())
             file.write(b.to_bytes())
