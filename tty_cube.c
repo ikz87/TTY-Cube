@@ -47,7 +47,6 @@ int main(int argc, char *argv[])
     struct sigaction action;
     memset(&action, 0, sizeof(struct sigaction));
     action.sa_handler = term;
-    sigaction(SIGTERM, &action, NULL);
     sigaction(SIGINT, &action, NULL);
 
     int fbfd = open(FB_DEVICE, O_RDWR);
@@ -86,6 +85,12 @@ int main(int argc, char *argv[])
     // Declare camera and light
     camera rotate_around_origin;
     light3 light;
+
+    // Get image data
+    #ifdef IMAGE
+    FILE* image_file = fopen(IMAGE, "r");
+    fread(image_data, SIDE_LENGTH*SIDE_LENGTH, 3, image_file);
+    #endif
 
     while (!done)
     {
