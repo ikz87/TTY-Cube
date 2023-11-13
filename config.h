@@ -22,4 +22,4 @@
 // SIDE_LENGTH by SIDE_LENGTH
 // Then run `python ./image_to_binary_data.py <image_path>`
 // Finally, uncomment the line below and recompile
-//#define IMAGE "image.dat"
+// #define IMAGE "image.dat"
