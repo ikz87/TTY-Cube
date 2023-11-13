@@ -204,13 +204,20 @@ int main(int argc, char *argv[])
                 // If pixel is outside the bounding box, just paint it black
                 else 
                 {
-                    vec4 fb_color = {buffer[(j*vinfo.xres+i)*4],
+                    if (RENDER_OVER_TEXT)
+                    {
+                        paint_pixel(i, j, (vec4){0,0,0,0}, buffer, vinfo);
+                    }
+                    else
+                    {
+                        vec4 fb_color = {buffer[(j*vinfo.xres+i)*4],
                             buffer[(j*vinfo.xres+i)*4+1],
                             buffer[(j*vinfo.xres+i)*4+2],
                             buffer[(j*vinfo.xres+i)*4+3]};
-                    if (fb_color.w == 87)
-                    {
-                        paint_pixel(i, j, (vec4){0,0,0,0}, buffer, vinfo);
+                        if (fb_color.w == 87)
+                        {
+                            paint_pixel(i, j, (vec4){0,0,0,0}, buffer, vinfo);
+                        }
                     }
                 }
             }
