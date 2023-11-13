@@ -2,14 +2,12 @@
 #include <linux/fb.h>   // For FBIOGET_VSCREENINFO
 #include <sys/ioctl.h>  // For ioctl
 #include <sys/mman.h>   // For mmap
-#include <unistd.h>     // For close, and other system functions
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <math.h>
 #include <string.h>
 #include <signal.h>
-#include <linux/fb.h>
 #include "config.h"
 #include "vectors.h"
 #include "fragment_shaders.h"
