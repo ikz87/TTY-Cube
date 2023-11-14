@@ -5,8 +5,8 @@ unsigned char image_data[SIDE_LENGTH*SIDE_LENGTH*3];
 #endif
 
 // Shaders that can apply to every face of the cube
-// Change it to whatever you want
 // Your resolution is SIDE_LENGTH by SIDE_LENGTH
+// in case you wanna code new ones
 vec4 solid_white(vec2 fragcoord, int face)
 {
     vec4 pixel = (vec4){1, 1, 1, 1};
