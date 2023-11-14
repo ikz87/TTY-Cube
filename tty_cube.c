@@ -8,6 +8,7 @@
 #include <math.h>
 #include <string.h>
 #include <signal.h>
+#include <time.h>
 #include "config.h"
 #include "vectors.h"
 #include "fragment_shaders.h"
@@ -73,8 +74,6 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    int time = 0;
-    double time_cyclic = 0;
     char buffer[vinfo.xres * vinfo.yres * 4];
 
     // Save the current state of the fb
@@ -90,10 +89,19 @@ int main(int argc, char *argv[])
     fread(image_data, SIDE_LENGTH*SIDE_LENGTH, 3, image_file);
     #endif
 
+    // Time for frame limiter
+    double time = 0;
+    double time_cyclic = 0;
+    struct timespec start, end;
+    clock_gettime(CLOCK_MONOTONIC_RAW, &start);
+    unsigned int delta_us = 0;
+    double delta = delta_us;
+
     while (!done)
     {
-        time++;
-        time_cyclic = (time%(1000/SPEED))/(1000/(SPEED)/2.0);
+        clock_gettime(CLOCK_MONOTONIC_RAW, &start);
+        time += SPEED*delta*20;
+        time_cyclic = ((int)time%100)/(100/2.0);
 
         // Define the camera
         rotate_around_origin = (camera){-SIDE_LENGTH,
@@ -234,6 +242,26 @@ int main(int argc, char *argv[])
         printf("\r");
         fflush(stdout);
         memcpy(fbp, buffer, 4 * vinfo.xres * vinfo.yres);
+        
+        clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+        delta_us = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_nsec - start.tv_nsec) / 1000;
+
+        if (FRAME_LIMIT > 0)
+        {
+            if (delta_us < 1000000.0 / FRAME_LIMIT)
+            {
+                usleep(1000000.0 / FRAME_LIMIT - delta_us);
+                delta = 1.0 / FRAME_LIMIT;
+            }
+            else
+            {
+                delta = delta_us/1000000.0;
+            }
+        }
+        else
+        {
+            delta = delta_us/1000000.0;
+        }
     }
     munmap(fbp, screensize);
     close(fbfd);

@@ -1,10 +1,11 @@
 #define FB_DEVICE "/dev/fb0"
 #define RENDER_OVER_TEXT 0
 #define RENDER_BOUNDING_BOX 0
+#define FRAME_LIMIT 60 // 0 to deactivate
 #define BLUR_ANTIALIAS 1
 #define SHADING 1
 #define SPECULAR_HIGHLIGHT 1 // SHADING has to be on for this to work
-#define SPEED 10
+#define SPEED 1
 #define SIDE_LENGTH 800
 #define EDGE_THICKNESS 50
 #define EDGE_COLOR (vec4){1,1,1,1}
