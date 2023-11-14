@@ -15,9 +15,9 @@ with open("recording.dat", "rb") as recording:
     image_counter = 0
     pixel_counter = 0
     while bytes[0]:
-        r = int.from_bytes(bytes[0], byteorder='big')  # Convert byte to integer
+        b = int.from_bytes(bytes[0], byteorder='big')  # Convert byte to integer
         g = int.from_bytes(bytes[1], byteorder='big')  # Convert byte to integer
-        b = int.from_bytes(bytes[2], byteorder='big')  # Convert byte to integer
+        r = int.from_bytes(bytes[2], byteorder='big')  # Convert byte to integer
         data[pixel_counter%xres, pixel_counter//xres] = (r, g ,b)
         bytes = []
         for i in range(4):
@@ -30,6 +30,3 @@ with open("recording.dat", "rb") as recording:
             data = image.load()
         else:
             pixel_counter += 1
-
-        if image_counter == 200:
-            break
