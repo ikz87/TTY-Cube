@@ -99,9 +99,11 @@ int main(int argc, char *argv[])
     clock_gettime(CLOCK_MONOTONIC_RAW, &start);
     unsigned int delta_us = 0;
     double delta = delta_us;
+    int frame = 0;
 
-    while (!done)
+    while (frame < 200)
     {
+        frame++;
         clock_gettime(CLOCK_MONOTONIC_RAW, &start);
         time += SPEED*delta*20;
         time_cyclic = ((int)time%100)/(100/2.0);
