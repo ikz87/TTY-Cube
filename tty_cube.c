@@ -87,6 +87,7 @@ int main(int argc, char *argv[])
     #ifdef IMAGE
     FILE* image_file = fopen(IMAGE, "r");
     fread(image_data, SIDE_LENGTH*SIDE_LENGTH, 3, image_file);
+    fclose(image_file);
     #endif
 
     // Output data
