@@ -89,6 +89,9 @@ int main(int argc, char *argv[])
     fread(image_data, SIDE_LENGTH*SIDE_LENGTH, 3, image_file);
     #endif
 
+    // Output data
+    FILE* recording = fopen("recording.dat", "w");
+
     // Time for frame limiter
     double time = 0;
     double time_cyclic = 0;
@@ -242,6 +245,9 @@ int main(int argc, char *argv[])
         printf("\r");
         fflush(stdout);
         memcpy(fbp, buffer, 4 * vinfo.xres * vinfo.yres);
+
+        // Also write buffer data to a file
+        fwrite(buffer, 4, vinfo.xres*vinfo.yres, recording);
         
         clock_gettime(CLOCK_MONOTONIC_RAW, &end);
         delta_us = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_nsec - start.tv_nsec) / 1000;
@@ -265,6 +271,7 @@ int main(int argc, char *argv[])
     }
     munmap(fbp, screensize);
     close(fbfd);
+    fclose(recording);
 
     return 0;
 }
