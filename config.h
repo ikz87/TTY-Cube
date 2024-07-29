@@ -6,8 +6,8 @@
 #define SHADING 1
 #define SPECULAR_HIGHLIGHT 1 // SHADING has to be on for this to work
 #define SPEED 1
-#define SIDE_LENGTH 800
-#define EDGE_THICKNESS 50
+#define SIDE_LENGTH 100
+#define EDGE_THICKNESS 0
 #define EDGE_COLOR (vec4){1,1,1,1}
 #define SHADER checker_pattern
 // Supported shaders:
@@ -22,4 +22,4 @@
 // 1. Set SHADER to image
 // 2. Run `./setup_image.sh <path_to_image>`
 // 3. Uncomment the line below
-// #define IMAGE "image.dat"
+#define IMAGE "image.dat"

@@ -15,6 +15,8 @@
 #include "light.h"
 #include "camera.h"
 #include "blur.h"
+#define clear() printf("\033[H\033[J")
+#define gotoxy(x,y) printf("\033[%d;%dH", (y), (x))
 
 
 #define PI 3.14159265
@@ -27,6 +29,7 @@ void term(int signum)
 }
  
 
+/*
 void paint_pixel(int x, int y, vec4 color, char buffer[], struct fb_var_screeninfo vinfo)
 {
     color.x = fmin(fmax(color.x, 0), 1);
@@ -39,45 +42,70 @@ void paint_pixel(int x, int y, vec4 color, char buffer[], struct fb_var_screenin
     buffer[(y*vinfo.xres+x)*4+3] = (unsigned int)(87);
     return;
 }
+*/
+
+typedef struct vp
+{
+    int xres;
+    int yres;
+} vp;
+
+char get_char_by_brightness(vec4 color)
+{
+    if (color.x == 0 && color.y == 0 && color.z == 0)
+    {
+        return ' ';
+    }
+    char char_pool[] = {'.', ':', '*', 'l', 'L', 'F', 'E', '$', '@', '#'};
+    //char char_pool[] = {'1', '2', '3', '4', '5', '6', '7', '8', '9', 'P'};
+    int brightness = fmin(((color.x + color.y + color.z)/3.0)*10.0, 10);
+    return char_pool[brightness];
+}
+    
+
+
+
+void paint_pixel(int x, int y, vec4 color, char buffer[], struct vp vinfo)
+{
+    color.x = fmin(fmax(color.x, 0), 1);
+    color.y = fmin(fmax(color.y, 0), 1);
+    color.z = fmin(fmax(color.z, 0), 1);
+    color.w = fmin(fmax(color.w, 0), 1);
+
+    printf("%c", get_char_by_brightness(color));
+    printf("%c", get_char_by_brightness(color));
+
+
+    if (x == vinfo.xres-1)
+    {
+        printf("\n");
+    }
+
+    if (y == vinfo.yres-1)
+    {
+        gotoxy(0,0);
+    }
+    
+    return;
+}
 
 
 int main(int argc, char *argv[])
 {
+    struct winsize w;
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+
+    vp vinfo;
+    vinfo.xres = w.ws_col/2;
+    vinfo.yres = w.ws_row;
     struct sigaction action;
-    memset(&action, 0, sizeof(struct sigaction));
     action.sa_handler = term;
     sigaction(SIGINT, &action, NULL);
-
-    int fbfd = open(FB_DEVICE, O_RDWR);
-    if (fbfd == -1) {
-        perror("Error opening framebuffer device");
-        exit(1);
-    }
-
-    struct fb_var_screeninfo vinfo;
-    if (ioctl(fbfd, FBIOGET_VSCREENINFO, &vinfo)) {
-        perror("Error reading variable information");
-        exit(1);
-    }
-
-    struct fb_fix_screeninfo finfo;
-    if (ioctl(fbfd, FBIOGET_FSCREENINFO, &finfo)) {
-        perror("Error reading fixed information");
-        exit(1);
-    }
-
-    long screensize = vinfo.yres_virtual * finfo.line_length;
-    char* fbp = (char*)mmap(0, screensize, PROT_READ | PROT_WRITE, MAP_SHARED, fbfd, 0);
-
-    if ((intptr_t)fbp == -1) {
-        perror("Error mapping framebuffer to memory");
-        exit(1);
-    }
 
     char buffer[vinfo.xres * vinfo.yres * 4];
 
     // Save the current state of the fb
-    memcpy(buffer, fbp, 4 * vinfo.xres * vinfo.yres);
+    //memcpy(buffer, fbp, 4 * vinfo.xres * vinfo.yres);
 
     // Declare camera and light
     camera rotate_around_origin;
@@ -167,68 +195,8 @@ int main(int argc, char *argv[])
         {
             for (int i = 0; i < vinfo.xres; i++)
             {
-                // If pixel is inside the cube's projected bounding box,
-                // render ir
-                if (i >=(int)min_coords.x && i <=(int)max_coords.x &&
-                        j >=(int)min_coords.y && j <=(int)max_coords.y)
-                {
-                    if (RENDER_BOUNDING_BOX)
-                    {
-                        if (i == (int)min_coords.x || i == (int)max_coords.x ||
-                                j == (int)min_coords.y || j == (int)max_coords.y)
-
-                        {
-                            paint_pixel(i, j, (vec4){1,1,1,1}, buffer, vinfo);
-                            continue;
-                        }
-                    }
-                    if (RENDER_OVER_TEXT)
-                    {
-                        vec4 color = get_pixel_through_camera(i, j, transformed_cam, light);
-                        paint_pixel(i, j, color, buffer, vinfo);
-                    }
-                    else
-                    {
-                        // Don't paint over tty text
-                        vec4 fb_color = {buffer[(j*vinfo.xres+i)*4],
-                            buffer[(j*vinfo.xres+i)*4+1],
-                            buffer[(j*vinfo.xres+i)*4+2],
-                            buffer[(j*vinfo.xres+i)*4+3]};
-                        if (fb_color.x == 0 &&
-                                fb_color.y == 0 &&
-                                fb_color.z == 0)
-                        {
-                            vec4 color = get_pixel_through_camera(i, j, transformed_cam, light);
-                            paint_pixel(i, j, color, buffer, vinfo);
-                        }
-                        // Also repaint previously painted pixels
-                        // (marked by w = 87)
-                        else if (fb_color.w == 87)
-                        {
-                            vec4 color = get_pixel_through_camera(i, j, transformed_cam, light);
-                            paint_pixel(i, j, color, buffer, vinfo);
-                        }
-                    }
-                }
-                // If pixel is outside the bounding box, just paint it black
-                else 
-                {
-                    if (RENDER_OVER_TEXT)
-                    {
-                        paint_pixel(i, j, (vec4){0,0,0,0}, buffer, vinfo);
-                    }
-                    else
-                    {
-                        vec4 fb_color = {buffer[(j*vinfo.xres+i)*4],
-                            buffer[(j*vinfo.xres+i)*4+1],
-                            buffer[(j*vinfo.xres+i)*4+2],
-                            buffer[(j*vinfo.xres+i)*4+3]};
-                        if (fb_color.w == 87)
-                        {
-                            paint_pixel(i, j, (vec4){0,0,0,0}, buffer, vinfo);
-                        }
-                    }
-                }
+                vec4 color = get_pixel_through_camera(i, j, transformed_cam, light);
+                paint_pixel(i, j, color, buffer, vinfo);
             }
         }
 
@@ -240,9 +208,9 @@ int main(int argc, char *argv[])
 
         // For some reason, the fb doesn't update fast enough
         // unless we print something first
-        printf("\r");
-        fflush(stdout);
-        memcpy(fbp, buffer, 4 * vinfo.xres * vinfo.yres);
+        //printf("\r");
+        //fflush(stdout);
+        //memcpy(fbp, buffer, 4 * vinfo.xres * vinfo.yres);
         
         clock_gettime(CLOCK_MONOTONIC_RAW, &end);
         delta_us = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_nsec - start.tv_nsec) / 1000;
@@ -264,8 +232,8 @@ int main(int argc, char *argv[])
             delta = delta_us/1000000.0;
         }
     }
-    munmap(fbp, screensize);
-    close(fbfd);
+    //munmap(fbp, screensize);
+    //close(fbfd);
 
     return 0;
 }
