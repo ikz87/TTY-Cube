@@ -285,112 +285,45 @@ int main(int argc, char *argv[])
             light_offset
         };
 
-        // Find the bounding box of the cube for the frame
-        vec3 vertices[8] = {(vec3){SIDE_LENGTH/2, SIDE_LENGTH/2, SIDE_LENGTH/2},
-            (vec3){SIDE_LENGTH/2, SIDE_LENGTH/2, -SIDE_LENGTH/2},
-            (vec3){SIDE_LENGTH/2, -SIDE_LENGTH/2, SIDE_LENGTH/2},
-            (vec3){SIDE_LENGTH/2, -SIDE_LENGTH/2, -SIDE_LENGTH/2},
-            (vec3){-SIDE_LENGTH/2, SIDE_LENGTH/2, SIDE_LENGTH/2},
-            (vec3){-SIDE_LENGTH/2, SIDE_LENGTH/2, -SIDE_LENGTH/2},
-            (vec3){-SIDE_LENGTH/2, -SIDE_LENGTH/2, SIDE_LENGTH/2},
-            (vec3){-SIDE_LENGTH/2, -SIDE_LENGTH/2, -SIDE_LENGTH/2}};
-
-        vec2 min_coords = (vec2){vinfo.xres, vinfo.yres};;
-        vec2 max_coords = (vec2){0,0};
-
-        for (int i = 0; i < 8; i++)
+        for (int j = 0; j < vinfo.yres; j += DOWNSCALING_FACTOR)
         {
-            vec3 projection_vector = normalize_vec3(subtract_vec3(vertices[i], transformed_cam.focal_point));
-            vec3 projection_point = 
-                    scale_vec3(projection_vector, 
-                        -transformed_cam.focal_offset/
-                        dot_product_vec3(projection_vector, transformed_cam.base_z));
-            max_coords.x = fmax(dot_product_vec3(projection_point, transformed_cam.base_x), max_coords.x);
-            max_coords.y = fmax(dot_product_vec3(projection_point, transformed_cam.base_y), max_coords.y);
-            min_coords.x = fmin(dot_product_vec3(projection_point, transformed_cam.base_x), min_coords.x);
-            min_coords.y = fmin(dot_product_vec3(projection_point, transformed_cam.base_y), min_coords.y);
-        }
-        
-        min_coords = add_vec2(min_coords, scale_vec2(transformed_cam.dimensions, 0.5));
-        min_coords.x = fmax(0, min_coords.x);
-        min_coords.y = fmax(0, min_coords.y);
-        max_coords = add_vec2(max_coords, scale_vec2(transformed_cam.dimensions, 0.5));
-        max_coords.x = fmin(vinfo.xres-1, max_coords.x);
-        max_coords.y = fmin(vinfo.yres-1, max_coords.y);
-
-        for (int j = 0; j < vinfo.yres; j++)
-        {
-            for (int i = 0; i < vinfo.xres; i++)
+            for (int i = 0; i < vinfo.xres; i += DOWNSCALING_FACTOR)
             {
-                // If pixel is inside the cube's projected bounding box,
-                // render ir
-                if (i >=(int)min_coords.x && i <=(int)max_coords.x &&
-                        j >=(int)min_coords.y && j <=(int)max_coords.y)
+                vec4 color = get_pixel_through_camera(i, j, transformed_cam, light);
+                for (int dc_offset_x = 0; dc_offset_x < DOWNSCALING_FACTOR; dc_offset_x++)
                 {
-                    if (RENDER_BOUNDING_BOX)
+                    for (int dc_offset_y = 0; dc_offset_y < DOWNSCALING_FACTOR; dc_offset_y++)
                     {
-                        if (i == (int)min_coords.x || i == (int)max_coords.x ||
-                                j == (int)min_coords.y || j == (int)max_coords.y)
-
+                        int x_off = i + dc_offset_x;
+                        int y_off = j + dc_offset_y;
+                        if (RENDER_OVER_TEXT)
                         {
-                            paint_pixel(i, j, (vec4){1,1,1,1}, buffer, vinfo);
-                            continue;
+                            paint_pixel(x_off, y_off, color, buffer, vinfo);
                         }
-                    }
-                    if (RENDER_OVER_TEXT)
-                    {
-                        vec4 color = get_pixel_through_camera(i, j, transformed_cam, light);
-                        paint_pixel(i, j, color, buffer, vinfo);
-                    }
-                    else
-                    {
-                        // Don't paint over tty text
-                        vec4 fb_color = {buffer[(j*vinfo.xres+i)*4],
-                            buffer[(j*vinfo.xres+i)*4+1],
-                            buffer[(j*vinfo.xres+i)*4+2],
-                            buffer[(j*vinfo.xres+i)*4+3]};
-                        if (fb_color.x == 0 &&
+                        else
+                        {
+                            // Don't paint over tty text
+                            vec4 fb_color = {buffer[((y_off)*vinfo.xres+x_off)*4],
+                                buffer[(y_off*vinfo.xres+x_off)*4+1],
+                                buffer[(y_off*vinfo.xres+x_off)*4+2],
+                                buffer[(y_off*vinfo.xres+x_off)*4+3]};
+                            if (fb_color.x == 0 &&
                                 fb_color.y == 0 &&
                                 fb_color.z == 0)
-                        {
-                            vec4 color = get_pixel_through_camera(i, j, transformed_cam, light);
-                            paint_pixel(i, j, color, buffer, vinfo);
-                        }
-                        // Also repaint previously painted pixels
-                        // (marked by w = 87)
-                        else if (fb_color.w == 87)
-                        {
-                            vec4 color = get_pixel_through_camera(i, j, transformed_cam, light);
-                            paint_pixel(i, j, color, buffer, vinfo);
-                        }
-                    }
-                }
-                // If pixel is outside the bounding box, just paint it black
-                else 
-                {
-                    if (RENDER_OVER_TEXT)
-                    {
-                        paint_pixel(i, j, (vec4){0,0,0,0}, buffer, vinfo);
-                    }
-                    else
-                    {
-                        vec4 fb_color = {buffer[(j*vinfo.xres+i)*4],
-                            buffer[(j*vinfo.xres+i)*4+1],
-                            buffer[(j*vinfo.xres+i)*4+2],
-                            buffer[(j*vinfo.xres+i)*4+3]};
-                        if (fb_color.w == 87)
-                        {
-                            paint_pixel(i, j, (vec4){0,0,0,0}, buffer, vinfo);
+                            {
+                                paint_pixel(x_off, y_off, color, buffer, vinfo);
+                            }
+                            // Also repaint previously painted pixels
+                            // (marked by w = 87)
+                            else if (fb_color.w == 87)
+                            {
+                                vec4 color = get_pixel_through_camera(i, j, transformed_cam, light);
+                                paint_pixel(x_off, y_off, color, buffer, vinfo);
+                            }
                         }
                     }
                 }
             }
-        }
-
-        // Somewhat remove aliasing applying a gaussian blur
-        if (BLUR_ANTIALIAS)
-        {
-            blur_pixels(buffer, min_coords, max_coords, vinfo.xres, vinfo.yres);
         }
 
         // For some reason, the fb doesn't update fast enough
