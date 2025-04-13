@@ -244,23 +244,23 @@ int main(int argc, char *argv[])
         right = normalize_vec3(right);
 
         // Apply movement based on flags
-        if (w_pressed) { camera_position = add_vec3(camera_position, scale_vec3(forward, move_speed * 0.01)); }
-        if (s_pressed) { camera_position = subtract_vec3(camera_position, scale_vec3(forward, move_speed * 0.01)); }
-        if (a_pressed) { camera_position = subtract_vec3(camera_position, scale_vec3(right, move_speed * 0.01)); }
-        if (d_pressed) { camera_position = add_vec3(camera_position, scale_vec3(right, move_speed * 0.01)); }
+        if (w_pressed) { camera_position = add_vec3(camera_position, scale_vec3(forward, move_speed * delta)); }
+        if (s_pressed) { camera_position = subtract_vec3(camera_position, scale_vec3(forward, move_speed * delta)); }
+        if (a_pressed) { camera_position = subtract_vec3(camera_position, scale_vec3(right, move_speed * delta)); }
+        if (d_pressed) { camera_position = add_vec3(camera_position, scale_vec3(right, move_speed * delta)); }
 
         // Apply rotation based on flags
-        if (k_pressed) { camera_rotation.x += rotation_speed * 0.01; }
-        if (j_pressed) { camera_rotation.x -= rotation_speed * 0.01; }
-        if (h_pressed) { camera_rotation.y -= rotation_speed * 0.01; }
-        if (l_pressed) { camera_rotation.y += rotation_speed * 0.01; }
+        if (k_pressed) { camera_rotation.x += rotation_speed * delta; }
+        if (j_pressed) { camera_rotation.x -= rotation_speed * delta; }
+        if (h_pressed) { camera_rotation.y -= rotation_speed * delta; }
+        if (l_pressed) { camera_rotation.y += rotation_speed * delta; }
 
         // Clamp pitch
         camera_rotation.x = fmaxf(-PI/2.0f + EPSILON, fminf(PI/2.0f - EPSILON, camera_rotation.x));
 
         // Go up and down
-        if (W_pressed) { camera_position.y -= move_speed * 0.01; }
-        if (S_pressed) { camera_position.y += move_speed * 0.01; }
+        if (W_pressed) { camera_position.y -= move_speed * delta; }
+        if (S_pressed) { camera_position.y += move_speed * delta; }
 
         // Define the camera
         cam = (camera){-SIDE_LENGTH,
