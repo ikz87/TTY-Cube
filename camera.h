@@ -36,7 +36,7 @@ camera setup_camera(camera camera)
     camera.center_offset = scale_vec2(camera.dimensions, 0.5);
 
     // Apply translations
-    camera.center_point = add_vec3(camera.center_point, camera.translations);
+    camera.focal_point = camera.translations;
 
     // Apply rotations 
     // We initialize our vector basis as normalized vectors
@@ -105,7 +105,7 @@ camera setup_camera(camera camera)
 
     // Now that we have our transformed 3d orthonormal base 
     // we can calculate our focal point 
-    camera.focal_point = add_vec3(camera.center_point, scale_vec3(camera.base_z, camera.focal_offset));
+    camera.center_point = add_vec3(camera.focal_point, scale_vec3(camera.base_z, -camera.focal_offset));
 
     // Return our set up camera
     return camera;

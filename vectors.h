@@ -165,3 +165,42 @@ double dot_product_vec3(vec3 a, vec3 b) {
 double dot_product_vec4(vec4 a, vec4 b) {
     return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
 }
+
+vec2 rotate_vec2(vec2 v, double angle) {
+    vec2 result;
+    double cos_a = cos(angle);
+    double sin_a = sin(angle);
+    result.x = v.x * cos_a - v.y * sin_a;
+    result.y = v.x * sin_a + v.y * cos_a;
+    return result;
+}
+
+vec3 rotate_vec3_x(vec3 v, double angle) {
+    vec3 result;
+    double cos_a = cos(angle);
+    double sin_a = sin(angle);
+    result.x = v.x;
+    result.y = v.y * cos_a - v.z * sin_a;
+    result.z = v.y * sin_a + v.z * cos_a;
+    return result;
+}
+
+vec3 rotate_vec3_y(vec3 v, double angle) {
+    vec3 result;
+    double cos_a = cos(angle);
+    double sin_a = sin(angle);
+    result.x = v.x * cos_a + v.z * sin_a;
+    result.y = v.y;
+    result.z = -v.x * sin_a + v.z * cos_a;
+    return result;
+}
+
+vec3 rotate_vec3_z(vec3 v, double angle) {
+    vec3 result;
+    double cos_a = cos(angle);
+    double sin_a = sin(angle);
+    result.x = v.x * cos_a - v.y * sin_a;
+    result.y = v.x * sin_a + v.y * cos_a;
+    result.z = v.z;
+    return result;
+}
