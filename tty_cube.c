@@ -45,7 +45,14 @@ void cleanup_input() {
 int setup_input(const char *device_path) {
     input_fd = open(device_path, O_RDONLY | O_NONBLOCK);
     if (input_fd < 0) {
-        fprintf(stderr, "Error opening input device '%s': %s\n", device_path, strerror(errno));
+        if (errno == EACCES) {
+            fprintf(stderr, "Error opening input device '%s': %s\n", device_path, strerror(errno));
+            fprintf(stderr, "You do not have permission to access this device. Try running as root or check your user permissions (e.g., add your user to the 'input' group).\n");
+        } else {
+            fprintf(stderr, "Error opening input device '%s': %s\n", device_path, strerror(errno));
+            fprintf(stderr, "Try changing your input device in config.h.\n");
+            fprintf(stderr, "For example: /dev/input/event3\n");
+        }
         return 0;
     }
     int rc = libevdev_new_from_fd(input_fd, &input_dev);
@@ -56,7 +63,11 @@ int setup_input(const char *device_path) {
         return 0;
     }
     printf("Input device name: \"%s\"\n", libevdev_get_name(input_dev));
-    printf("Ready for input...\n");
+    printf("Controls:\n");
+    printf("WASD = Move\n");
+    printf("Space = Move upwards\n");
+    printf("Shift = Move downwards\n");
+    printf("HJKL = Camera (vim-like binds)\n");
     atexit(cleanup_input);
     return 1;
 }
@@ -131,12 +142,8 @@ int main(int argc, char *argv[]) {
     }
 
     // Input device
-    const char *input_device = "/dev/input/event3";
-    if (argc > 2) input_device = argv[2];
+    const char *input_device = INPUT_DEVICE;
     if (!setup_input(input_device)) {
-        fprintf(stderr, "Could not initialize input. Try providing your input device path as argument.\n");
-        fprintf(stderr, "For example: %s %s /dev/input/event3\n", argv[0], argv[1]);
-        fprintf(stderr, "Find your keyboard device with: cat /proc/bus/input/devices\n");
         munmap(fbp, screensize);
         close(fbfd);
         return 1;
@@ -313,13 +320,56 @@ int main(int argc, char *argv[]) {
         if (RENDER_BOUNDING_BOX) {
             // Draw top and bottom edges
             for (int x = (int)min_coords.x; x <= (int)max_coords.x; x++) {
-                paint_pixel(x, (int)min_coords.y, (vec4){1,1,1,1}, buffer, vinfo);
-                paint_pixel(x, (int)max_coords.y, (vec4){1,1,1,1}, buffer, vinfo);
+                if (RENDER_OVER_TEXT) {
+                    paint_pixel(x, (int)min_coords.y, (vec4){1,1,1,1}, buffer, vinfo);
+                    paint_pixel(x, (int)max_coords.y, (vec4){1,1,1,1}, buffer, vinfo);
+                }
+                else {
+                    vec4 top_color = {buffer[((int)min_coords.y*vinfo.xres+x)*4],
+                        buffer[((int)min_coords.y*vinfo.xres+x)*4+1],
+                        buffer[((int)min_coords.y*vinfo.xres+x)*4+2],
+                        buffer[((int)min_coords.y*vinfo.xres+x)*4+3]};
+
+                    vec4 bottom_color = {buffer[((int)max_coords.y*vinfo.xres+x)*4],
+                        buffer[((int)max_coords.y*vinfo.xres+x)*4+1],
+                        buffer[((int)max_coords.y*vinfo.xres+x)*4+2],
+                        buffer[((int)max_coords.y*vinfo.xres+x)*4+3]};
+                    if (top_color.w == 87 || (top_color.x == 0 && top_color.y == 0 && top_color.z == 0))
+                    {
+                        paint_pixel(x, (int)min_coords.y, (vec4){1,1,1,1}, buffer, vinfo);
+                    }
+                    if (bottom_color.w == 87 || (bottom_color.x == 0 && bottom_color.y == 0 && bottom_color.z == 0))
+                    {
+                        paint_pixel(x, (int)max_coords.y, (vec4){1,1,1,1}, buffer, vinfo);
+                    }
+                }
             }
             // Draw left and right edges
             for (int y = (int)min_coords.y; y <= (int)max_coords.y; y++) {
-                paint_pixel((int)min_coords.x, y, (vec4){1,1,1,1}, buffer, vinfo);
-                paint_pixel((int)max_coords.x, y, (vec4){1,1,1,1}, buffer, vinfo);
+                if (RENDER_OVER_TEXT) {
+                    paint_pixel((int)min_coords.x, y, (vec4){1,1,1,1}, buffer, vinfo);
+                    paint_pixel((int)max_coords.x, y, (vec4){1,1,1,1}, buffer, vinfo);
+                }
+                else {
+                    vec4 left_color = {buffer[(y*vinfo.xres+(int)min_coords.x)*4],
+                        buffer[((int)y*vinfo.xres+(int)min_coords.x)*4+1],
+                        buffer[((int)y*vinfo.xres+(int)min_coords.x)*4+2],
+                        buffer[((int)y*vinfo.xres+(int)min_coords.x)*4+3]};
+
+                    vec4 right_color = {buffer[(y*vinfo.xres+(int)max_coords.x)*4],
+                        buffer[((int)y*vinfo.xres+(int)max_coords.x)*4+1],
+                        buffer[((int)y*vinfo.xres+(int)max_coords.x)*4+2],
+                        buffer[((int)y*vinfo.xres+(int)max_coords.x)*4+3]};
+
+                    if (left_color.w == 87 || (left_color.x == 0 && left_color.y == 0 && left_color.z == 0))
+                    {
+                        paint_pixel(min_coords.x, y, (vec4){1,1,1,1}, buffer, vinfo);
+                    }
+                    if (right_color.w == 87 || (right_color.x == 0 && right_color.y == 0 && right_color.z == 0))
+                    {
+                        paint_pixel(max_coords.x, y, (vec4){1,1,1,1}, buffer, vinfo);
+                    }
+                }
             }
         }
         if (BLUR_ANTIALIAS)

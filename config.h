@@ -1,4 +1,5 @@
 #define FB_DEVICE "/dev/fb0"
+#define INPUT_DEVICE "/dev/input/event3"
 #define RENDER_OVER_TEXT 0
 #define RENDER_BOUNDING_BOX 1
 #define FRAME_LIMIT 60 // 0 to deactivate
@@ -8,7 +9,7 @@
 #define SIDE_LENGTH 800
 #define EDGE_THICKNESS 50
 #define EDGE_COLOR (vec4){1,1,1,1}
-#define SHADER image
+#define SHADER checker_pattern
 #define DOWNSCALING_FACTOR 4 // Preferably a number that divides your screen dimensions | 1 for no Down
 #define BLUR_ANTIALIAS 0 // Kinda antialias the fargment shader with some gaussian blue
 
@@ -24,4 +25,4 @@
 // 1. Set SHADER to image
 // 2. Run `./setup_image.sh <path_to_image>`
 // 3. Uncomment the line below
-#define IMAGE "image.dat"
+// #define IMAGE "image.dat"
