@@ -127,9 +127,6 @@ vec4 get_pixel_from_projection(
         scale_vec3(local_focal_vector, t), local_focal_point
     );
 
-    // Rotate intersection back to world space
-    vec3 intersection = rotate_vec3_y(intersection_local, cube_rotation_y);
-
     // Save necessary coordinates and normal vector
     vec2 cam_coords;
     vec3 normal_local;
@@ -169,41 +166,49 @@ vec4 get_pixel_from_projection(
         return (vec4){0, 0, 0, 0};
     } else if (cam_coords.x > SIDE_LENGTH - EDGE_THICKNESS - 1 ||
                cam_coords.y > SIDE_LENGTH - EDGE_THICKNESS - 1 ||
-               cam_coords.x < EDGE_THICKNESS || cam_coords.y < EDGE_THICKNESS) {
+        cam_coords.x < EDGE_THICKNESS || cam_coords.y < EDGE_THICKNESS) {
         pixel = EDGE_COLOR;
     } else {
         pixel = SHADER(cam_coords, face);
     }
 
-    // Rotate normal to world space for shading
+    vec3 intersection = rotate_vec3_y(intersection_local, cube_rotation_y);
     vec3 normal = rotate_vec3_y(normal_local, cube_rotation_y);
 
-    // Apply shading
+    // Lighting calculation in world space:
     if (SHADING) {
-        // Rotate light into local space
-vec3 local_light_position = rotate_vec3_y(light.position, -cube_rotation_y);
+        // Use light.position as-is (world space)
+        double base_light = 0.2;
+        vec3 incident = normalize_vec3(subtract_vec3(light.position, intersection));
+        double dot = dot_product_vec3(incident, normal);
+        vec3 diffuse = scale_vec3(light.color, (fmin(dot, 0) - base_light) / (-1 - base_light));
+        pixel.x *= diffuse.x;
+        pixel.y *= diffuse.y;
+        pixel.z *= diffuse.z;
 
-// Diffuse lighting
-double base_light = 0.2;
-vec3 incident = normalize_vec3(subtract_vec3(local_light_position, intersection_local));
-double dot = dot_product_vec3(incident, normal_local);
-vec3 diffuse = scale_vec3(light.color, (fmin(dot, 0) - base_light) / (-1 - base_light));
-pixel.x *= diffuse.x;
-pixel.y *= diffuse.y;
-pixel.z *= diffuse.z;
-
-// Specular highlight
-if (SPECULAR_HIGHLIGHT) {
+        // Specular highlight
+        if (SPECULAR_HIGHLIGHT) {
     double smoothness = 0.2;
-    vec3 view_dir = normalize_vec3(scale_vec3(local_focal_vector, -1));
-    vec3 reflected = subtract_vec3(incident, scale_vec3(normal_local, 2 * dot));
-    double spec = fmax(0, -dot_product_vec3(view_dir, reflected));
-    vec3 highlight = scale_vec3(light.color, pow(spec, smoothness * 100));
+    // View direction: from intersection to camera
+    vec3 view_dir = normalize_vec3(subtract_vec3(camera.focal_point, intersection));
+    // Light direction: from surface to light
+    vec3 light_dir = normalize_vec3(subtract_vec3(light.position, intersection));
+    // Reflection direction: reflect(-light_dir, normal)
+    double ndotl = dot_product_vec3(normal, light_dir);
+    vec3 reflected = subtract_vec3(
+        scale_vec3(normal, 2 * ndotl),
+        light_dir
+    );
+    reflected = normalize_vec3(reflected);
+    // Specular intensity
+    double spec = pow(fmax(0, dot_product_vec3(view_dir, reflected)), smoothness * 100);
+    vec3 highlight = scale_vec3(light.color, spec);
     pixel.x += highlight.x;
     pixel.y += highlight.y;
     pixel.z += highlight.z;
 }
-pixel.w = 1;
+
+        pixel.w = 1;
     }
 
     return pixel;

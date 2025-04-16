@@ -227,10 +227,7 @@ int main(int argc, char *argv[]) {
         vec3 light_offset = (vec3){SIDE_LENGTH*4,-SIDE_LENGTH*5,-SIDE_LENGTH*2};
         light = (light3){
             (vec3){1,1,1},
-            add_vec3(transformed_cam.center_point,
-                     add_vec3(scale_vec3(transformed_cam.base_x, light_offset.x),
-                              add_vec3(scale_vec3(transformed_cam.base_y, light_offset.y),
-                                       scale_vec3(transformed_cam.base_z, light_offset.z))))
+            light_offset,
         };
 
         // Bounding box for cube
