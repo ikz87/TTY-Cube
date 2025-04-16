@@ -1,17 +1,18 @@
-#include <fcntl.h>      // For open
-#include <linux/fb.h>   // For FBIOGET_VSCREENINFO
-#include <sys/ioctl.h>  // For ioctl
-#include <sys/mman.h>   // For mmap
+#include <fcntl.h>
+#include <linux/fb.h>
+#include <sys/ioctl.h>
+#include <sys/mman.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <libevdev-1.0/libevdev/libevdev.h>
 #include <math.h>
 #include <string.h>
 #include <signal.h>
 #include <time.h>
-#include <termios.h>    // For raw terminal mode
-#include <sys/select.h> // For select()
-#include <errno.h>      // For error checking (optional)
+#include <termios.h>
+#include <sys/select.h>
+#include <errno.h>
 #include "config.h"
 #include "vectors.h"
 #include "fragment_shaders.h"
@@ -19,59 +20,75 @@
 #include "camera.h"
 #include "blur.h"
 
-
 #define PI 3.14159265
 #define EPSILON 1e-6f
 
 volatile sig_atomic_t done = 0;
-struct termios original_termios; // Store original terminal settings
 
- 
-void term(int signum)
-{
-    done = 1;
+typedef struct {
+    int w, a, s, d;
+    int h, j, k, l;
+    int q;
+    int shift;
+    int space;
+} KeyState;
+
+KeyState key_state = {0};
+struct libevdev *input_dev = NULL;
+int input_fd = -1;
+
+void cleanup_input() {
+    if (input_dev) libevdev_free(input_dev);
+    if (input_fd >= 0) close(input_fd);
 }
 
-// Function to restore terminal settings
-void restore_terminal(void) {
-    tcsetattr(STDIN_FILENO, TCSAFLUSH, &original_termios);
-    printf("\033[?25h"); // Show cursor again
-    fflush(stdout);
-}
-
-// Function to set raw terminal mode
-void set_raw_terminal(void) {
-    struct termios raw;
-
-    if (tcgetattr(STDIN_FILENO, &original_termios) == -1) {
-        perror("tcgetattr");
-        exit(1);
+int setup_input(const char *device_path) {
+    input_fd = open(device_path, O_RDONLY | O_NONBLOCK);
+    if (input_fd < 0) {
+        fprintf(stderr, "Error opening input device '%s': %s\n", device_path, strerror(errno));
+        return 0;
     }
-    // Register the cleanup function to restore settings on exit
-    atexit(restore_terminal);
-
-
-    raw = original_termios; // Copy original settings
-    // Modify settings for raw mode
-    raw.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON); // Input modes
-    raw.c_oflag &= ~(OPOST); // Keep OPOST disabled for now
-    raw.c_cflag |= (CS8); // Control modes (8-bit chars)
-    raw.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG); // Local modes
-    // VMIN = 0, VTIME = 0: read() returns immediately, 0 bytes if no input
-    raw.c_cc[VMIN] = 0;
-    raw.c_cc[VTIME] = 0;
-
-    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) == -1) {
-        perror("tcsetattr");
-        exit(1);
+    int rc = libevdev_new_from_fd(input_fd, &input_dev);
+    if (rc < 0) {
+        fprintf(stderr, "Failed to initialize libevdev: %s\n", strerror(-rc));
+        close(input_fd);
+        input_fd = -1;
+        return 0;
     }
-    // printf("\033[?25l"); // Hide cursor
-    // fflush(stdout);
+    printf("Input device name: \"%s\"\n", libevdev_get_name(input_dev));
+    printf("Ready for input...\n");
+    atexit(cleanup_input);
+    return 1;
 }
- 
 
-void paint_pixel(int x, int y, vec4 color, char buffer[], struct fb_var_screeninfo vinfo)
-{
+void term(int signum) { done = 1; }
+
+void process_input_events() {
+    struct input_event ev;
+    int rc;
+    do {
+        rc = libevdev_next_event(input_dev, LIBEVDEV_READ_FLAG_NORMAL, &ev);
+        if (rc == 0 && ev.type == EV_KEY) {
+            int pressed = ev.value != 0;
+            switch (ev.code) {
+                case KEY_W: key_state.w = pressed; break;
+                case KEY_A: key_state.a = pressed; break;
+                case KEY_S: key_state.s = pressed; break;
+                case KEY_D: key_state.d = pressed; break;
+                case KEY_H: key_state.h = pressed; break;
+                case KEY_J: key_state.j = pressed; break;
+                case KEY_K: key_state.k = pressed; break;
+                case KEY_L: key_state.l = pressed; break;
+                case KEY_Q: key_state.q = pressed; break;
+                case KEY_SPACE: key_state.space = pressed; break;
+                case KEY_LEFTSHIFT:
+                case KEY_RIGHTSHIFT: key_state.shift = pressed; break;
+            }
+        }
+    } while (rc == 1 || rc == 0);
+}
+
+void paint_pixel(int x, int y, vec4 color, char buffer[], struct fb_var_screeninfo vinfo) {
     color.x = fmin(fmax(color.x, 0), 1);
     color.y = fmin(fmax(color.y, 0), 1);
     color.z = fmin(fmax(color.z, 0), 1);
@@ -80,18 +97,13 @@ void paint_pixel(int x, int y, vec4 color, char buffer[], struct fb_var_screenin
     buffer[(y*vinfo.xres+x)*4+1] = (unsigned int)(color.y * 255);
     buffer[(y*vinfo.xres+x)*4+2] = (unsigned int)(color.x * 255);
     buffer[(y*vinfo.xres+x)*4+3] = (unsigned int)(87);
-    return;
 }
 
-
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     struct sigaction action;
     memset(&action, 0, sizeof(struct sigaction));
     action.sa_handler = term;
     sigaction(SIGINT, &action, NULL);
-
-    set_raw_terminal();
 
     int fbfd = open(FB_DEVICE, O_RDWR);
     if (fbfd == -1) {
@@ -113,36 +125,42 @@ int main(int argc, char *argv[])
 
     long screensize = vinfo.yres_virtual * finfo.line_length;
     char* fbp = (char*)mmap(0, screensize, PROT_READ | PROT_WRITE, MAP_SHARED, fbfd, 0);
-
     if ((intptr_t)fbp == -1) {
         perror("Error mapping framebuffer to memory");
         exit(1);
     }
 
+    // Input device
+    const char *input_device = "/dev/input/event3";
+    if (argc > 2) input_device = argv[2];
+    if (!setup_input(input_device)) {
+        fprintf(stderr, "Could not initialize input. Try providing your input device path as argument.\n");
+        fprintf(stderr, "For example: %s %s /dev/input/event3\n", argv[0], argv[1]);
+        fprintf(stderr, "Find your keyboard device with: cat /proc/bus/input/devices\n");
+        munmap(fbp, screensize);
+        close(fbfd);
+        return 1;
+    }
+
     size_t buffer_size = (size_t)vinfo.xres * vinfo.yres * 4;
-    char* buffer = calloc(buffer_size, 1); // Use calloc for zero-init
+    char* buffer = calloc(buffer_size, 1);
     if (buffer == NULL) {
         perror("Error allocating draw buffer");
         munmap(fbp, screensize);
         close(fbfd);
         exit(1);
     }
-
-    // Save the current state of the fb
     memcpy(buffer, fbp, 4 * vinfo.xres * vinfo.yres);
 
-    // Declare camera and light
     camera cam;
     light3 light;
 
-    // Get image data
-    #ifdef IMAGE
+#ifdef IMAGE
     FILE* image_file = fopen(IMAGE, "r");
     fread(image_data, SIDE_LENGTH*SIDE_LENGTH, 3, image_file);
     fclose(image_file);
-    #endif
+#endif
 
-    // Time for frame limiter
     double time = 0;
     double time_cyclic = 0;
     struct timespec start, end;
@@ -150,175 +168,141 @@ int main(int argc, char *argv[])
     unsigned int delta_us = 0;
     double delta = delta_us;
 
-    // Some flags for input
-    int w_pressed = 0, a_pressed = 0, s_pressed = 0, d_pressed = 0;
-    int k_pressed = 0, j_pressed = 0, h_pressed = 0, l_pressed = 0;
-    int W_pressed = 0, S_pressed = 0;
-    int q_pressed = 0;
-
-
-    // Also some vars for camera position and rotation
+    // Camera state
     vec3 camera_position = (vec3) {0, 0, -2*SIDE_LENGTH};
     vec3 camera_rotation = (vec3) {0, 0, 0};
-    int move_speed = 5000;
-    int rotation_speed = PI;
+    int move_speed = 3000;
+    int rotation_speed = PI*0.7;
 
-    while (!done)
-    {
+    while (!done) {
         clock_gettime(CLOCK_MONOTONIC_RAW, &start);
         time += SPEED*delta*20;
         time_cyclic = ((int)time%100)/(100/2.0);
 
+        process_input_events();
+        if (key_state.q) { done = 1; continue; }
 
-        // Reset flags 
-        w_pressed = a_pressed = s_pressed = d_pressed = 0;
-        h_pressed = j_pressed = k_pressed = l_pressed = 0;
-        W_pressed = S_pressed = 0;
-        q_pressed = 0;
-
-
-        // --- Raw Terminal Input Processing ---
-        char input_buf[32]; // Buffer for potentially multiple inputs/sequences
-        ssize_t total_bytes_read = 0;
-        int select_ret;
-
-        // Loop select/read to consume all available input for this frame
-        do {
-            struct timeval tv = { 0L, 0L }; // Check immediately
-            fd_set fds;
-            FD_ZERO(&fds);
-            FD_SET(STDIN_FILENO, &fds);
-            select_ret = select(STDIN_FILENO + 1, &fds, NULL, NULL, &tv);
-
-            if (select_ret > 0) {
-                // Read available data, append to buffer if space allows
-                if (total_bytes_read < sizeof(input_buf) - 1) {
-                    ssize_t bytes_read = read(STDIN_FILENO,
-                                              input_buf + total_bytes_read,
-                                              sizeof(input_buf) - 1 - total_bytes_read);
-                    if (bytes_read > 0) {
-                        total_bytes_read += bytes_read;
-                    } else if (bytes_read == -1 && errno != EAGAIN && errno != EWOULDBLOCK) {
-                        perror("read");
-                        done = 1; // Exit on read error
-                        break;    // Exit inner loop
-                    } else {
-                        // bytes_read == 0 or EAGAIN/EWOULDBLOCK means no more data right now
-                        select_ret = 0; // Force exit from inner loop
-                    }
-                } else {
-                    // Input buffer full, process what we have and try again next frame
-                    select_ret = 0; // Force exit from inner loop
-                }
-            } else if (select_ret == -1 && errno != EINTR) {
-                perror("select");
-                done = 1; // Exit on select error
-            }
-            // Continue looping if select found data and we read something
-        } while (select_ret > 0 && !done);
-
-        // Null-terminate the buffer
-        input_buf[total_bytes_read] = '\0';
-
-        // Process the accumulated input buffer to set state flags
-        for (ssize_t i = 0; i < total_bytes_read; ++i) {
-            if (input_buf[i] == 'q' || input_buf[i] == 'Q') { q_pressed = 1; }
-            if (input_buf[i] == 'w') { w_pressed = 1; }
-            if (input_buf[i] == 's') { s_pressed = 1; }
-            if (input_buf[i] == 'W') { W_pressed = 1; }
-            if (input_buf[i] == 'S') { S_pressed = 1; }
-            if (input_buf[i] == 'a' || input_buf[i] == 'A') { a_pressed = 1; }
-            if (input_buf[i] == 'd' || input_buf[i] == 'D') { d_pressed = 1; }
-            if (input_buf[i] == 'h' || input_buf[i] == 'H') { h_pressed = 1; }
-            if (input_buf[i] == 'j' || input_buf[i] == 'J') { j_pressed = 1; }
-            if (input_buf[i] == 'k' || input_buf[i] == 'K') { k_pressed = 1; }
-            if (input_buf[i] == 'l' || input_buf[i] == 'L') { l_pressed = 1; }
-        }
-
-        if (q_pressed) { done = 1; } // Check quit flag
-        
-        // Calculate basis vectors based on current rotation
+        // Camera movement
         vec3 forward = { -cos(camera_rotation.y + PI/2.0), 0, sin(camera_rotation.y + PI/2.0) };
         vec3 right = { cos(camera_rotation.y), 0, -sin(camera_rotation.y) };
         forward = normalize_vec3(forward);
         right = normalize_vec3(right);
 
-        // Apply movement based on flags
-        if (w_pressed) { camera_position = add_vec3(camera_position, scale_vec3(forward, move_speed * delta)); }
-        if (s_pressed) { camera_position = subtract_vec3(camera_position, scale_vec3(forward, move_speed * delta)); }
-        if (a_pressed) { camera_position = subtract_vec3(camera_position, scale_vec3(right, move_speed * delta)); }
-        if (d_pressed) { camera_position = add_vec3(camera_position, scale_vec3(right, move_speed * delta)); }
-
-        // Apply rotation based on flags
-        if (k_pressed) { camera_rotation.x += rotation_speed * delta; }
-        if (j_pressed) { camera_rotation.x -= rotation_speed * delta; }
-        if (h_pressed) { camera_rotation.y -= rotation_speed * delta; }
-        if (l_pressed) { camera_rotation.y += rotation_speed * delta; }
-
-        // Clamp pitch
+        if (key_state.w) camera_position = add_vec3(camera_position, scale_vec3(forward, move_speed * delta));
+        if (key_state.s) camera_position = subtract_vec3(camera_position, scale_vec3(forward, move_speed * delta));
+        if (key_state.a) camera_position = subtract_vec3(camera_position, scale_vec3(right, move_speed * delta));
+        if (key_state.d) camera_position = add_vec3(camera_position, scale_vec3(right, move_speed * delta));
+        if (key_state.k) camera_rotation.x += rotation_speed * delta;
+        if (key_state.j) camera_rotation.x -= rotation_speed * delta;
+        if (key_state.h) camera_rotation.y -= rotation_speed * delta;
+        if (key_state.l) camera_rotation.y += rotation_speed * delta;
         camera_rotation.x = fmaxf(-PI/2.0f + EPSILON, fminf(PI/2.0f - EPSILON, camera_rotation.x));
+        if (key_state.space) camera_position.y -= move_speed * delta;
+        if (key_state.shift) camera_position.y += move_speed * delta;
 
-        // Go up and down
-        if (W_pressed) { camera_position.y -= move_speed * delta; }
-        if (S_pressed) { camera_position.y += move_speed * delta; }
-
-        // Define the camera
+        // Camera setup
         cam = (camera){-SIDE_LENGTH,
+            time,
             (vec2){vinfo.xres, vinfo.yres},
             camera_rotation,
             camera_position,
             (vec3){1,1,1},
-
             (vec2){0,0},
             (vec3){0,0,0},
             (vec3){0,0,0},
             (vec3){0,0,0},
             (vec3){0,0,0},
-            (vec3){0,0,0}};
+            (vec3){0,0,0}
+        };
         camera transformed_cam = setup_camera(cam);
 
-        // Define the light source
-
-        vec3 light_offset = (vec3){SIDE_LENGTH*3,-SIDE_LENGTH*2,-SIDE_LENGTH};
+        // Light setup
+        vec3 light_offset = (vec3){SIDE_LENGTH*4,-SIDE_LENGTH*5,-SIDE_LENGTH*2};
         light = (light3){
             (vec3){1,1,1},
-            light_offset
+            add_vec3(transformed_cam.center_point,
+                     add_vec3(scale_vec3(transformed_cam.base_x, light_offset.x),
+                              add_vec3(scale_vec3(transformed_cam.base_y, light_offset.y),
+                                       scale_vec3(transformed_cam.base_z, light_offset.z))))
         };
 
-        for (int j = 0; j < vinfo.yres; j += DOWNSCALING_FACTOR)
-        {
-            for (int i = 0; i < vinfo.xres; i += DOWNSCALING_FACTOR)
-            {
-                vec4 color = get_pixel_through_camera(i, j, transformed_cam, light);
-                for (int dc_offset_x = 0; dc_offset_x < DOWNSCALING_FACTOR; dc_offset_x++)
-                {
-                    for (int dc_offset_y = 0; dc_offset_y < DOWNSCALING_FACTOR; dc_offset_y++)
-                    {
-                        int x_off = i + dc_offset_x;
-                        int y_off = j + dc_offset_y;
-                        if (RENDER_OVER_TEXT)
-                        {
-                            paint_pixel(x_off, y_off, color, buffer, vinfo);
-                        }
-                        else
-                        {
-                            // Don't paint over tty text
-                            vec4 fb_color = {buffer[((y_off)*vinfo.xres+x_off)*4],
-                                buffer[(y_off*vinfo.xres+x_off)*4+1],
-                                buffer[(y_off*vinfo.xres+x_off)*4+2],
-                                buffer[(y_off*vinfo.xres+x_off)*4+3]};
-                            if (fb_color.x == 0 &&
-                                fb_color.y == 0 &&
-                                fb_color.z == 0)
-                            {
-                                paint_pixel(x_off, y_off, color, buffer, vinfo);
+        // Bounding box for cube
+        vec3 vertices[8] = {
+            (vec3){SIDE_LENGTH/2, SIDE_LENGTH/2, SIDE_LENGTH/2},
+            (vec3){SIDE_LENGTH/2, SIDE_LENGTH/2, -SIDE_LENGTH/2},
+            (vec3){SIDE_LENGTH/2, -SIDE_LENGTH/2, SIDE_LENGTH/2},
+            (vec3){SIDE_LENGTH/2, -SIDE_LENGTH/2, -SIDE_LENGTH/2},
+            (vec3){-SIDE_LENGTH/2, SIDE_LENGTH/2, SIDE_LENGTH/2},
+            (vec3){-SIDE_LENGTH/2, SIDE_LENGTH/2, -SIDE_LENGTH/2},
+            (vec3){-SIDE_LENGTH/2, -SIDE_LENGTH/2, SIDE_LENGTH/2},
+            (vec3){-SIDE_LENGTH/2, -SIDE_LENGTH/2, -SIDE_LENGTH/2}
+        };
+
+        for (int i = 0; i < 8; i++) {
+            vertices[i] = rotate_vec3_y(vertices[i], time*4*PI/1000);
+        }
+
+        vec2 min_coords = {vinfo.xres, vinfo.yres};
+        vec2 max_coords = {0, 0};
+
+        for (int i = 0; i < 8; i++) {
+            vec2 screen = project_vertex_to_screen(vertices[i], transformed_cam);
+            if (screen.x < min_coords.x) min_coords.x = screen.x;
+            if (screen.y < min_coords.y) min_coords.y = screen.y;
+            if (screen.x > max_coords.x) max_coords.x = screen.x;
+            if (screen.y > max_coords.y) max_coords.y = screen.y;
+        }
+
+        // Clamp to screen
+        min_coords.x = fmax(0, min_coords.x);
+        min_coords.y = fmax(0, min_coords.y);
+        max_coords.x = fmin(vinfo.xres-1, max_coords.x);
+        max_coords.y = fmin(vinfo.yres-1, max_coords.y);
+
+        for (int j = 0; j < vinfo.yres; j += DOWNSCALING_FACTOR) {
+            for (int i = 0; i < vinfo.xres; i += DOWNSCALING_FACTOR) {
+                if (i >= (int)min_coords.x && i <= (int)max_coords.x &&
+                    j >= (int)min_coords.y && j <= (int)max_coords.y) {
+                    if (RENDER_OVER_TEXT) {
+                        vec4 color = get_pixel_through_camera(i, j, transformed_cam, light);
+                        for (int dc_offset_x = 0; dc_offset_x < DOWNSCALING_FACTOR; dc_offset_x++)
+                            for (int dc_offset_y = 0; dc_offset_y < DOWNSCALING_FACTOR; dc_offset_y++)
+                                paint_pixel(i + dc_offset_x, j + dc_offset_y, color, buffer, vinfo);
+                    } else {
+                        for (int dc_offset_x = 0; dc_offset_x < DOWNSCALING_FACTOR; dc_offset_x++) {
+                            for (int dc_offset_y = 0; dc_offset_y < DOWNSCALING_FACTOR; dc_offset_y++) {
+                                int x_off = i + dc_offset_x;
+                                int y_off = j + dc_offset_y;
+                                vec4 fb_color = {buffer[(y_off*vinfo.xres+x_off)*4],
+                                    buffer[(y_off*vinfo.xres+x_off)*4+1],
+                                    buffer[(y_off*vinfo.xres+x_off)*4+2],
+                                    buffer[(y_off*vinfo.xres+x_off)*4+3]};
+                                if (fb_color.x == 0 && fb_color.y == 0 && fb_color.z == 0) {
+                                    vec4 color = get_pixel_through_camera(i, j, transformed_cam, light);
+                                    paint_pixel(x_off, y_off, color, buffer, vinfo);
+                                } else if (fb_color.w == 87) {
+                                    vec4 color = get_pixel_through_camera(i, j, transformed_cam, light);
+                                    paint_pixel(x_off, y_off, color, buffer, vinfo);
+                                }
                             }
-                            // Also repaint previously painted pixels
-                            // (marked by w = 87)
-                            else if (fb_color.w == 87)
-                            {
-                                vec4 color = get_pixel_through_camera(i, j, transformed_cam, light);
-                                paint_pixel(x_off, y_off, color, buffer, vinfo);
+                        }
+                    }
+                } else {
+                    if (RENDER_OVER_TEXT) {
+                        for (int dc_offset_x = 0; dc_offset_x < DOWNSCALING_FACTOR; dc_offset_x++)
+                            for (int dc_offset_y = 0; dc_offset_y < DOWNSCALING_FACTOR; dc_offset_y++)
+                                paint_pixel(i + dc_offset_x, j + dc_offset_y, (vec4){0,0,0,0}, buffer, vinfo);
+                    } else {
+                        for (int dc_offset_x = 0; dc_offset_x < DOWNSCALING_FACTOR; dc_offset_x++) {
+                            for (int dc_offset_y = 0; dc_offset_y < DOWNSCALING_FACTOR; dc_offset_y++) {
+                                int x_off = i + dc_offset_x;
+                                int y_off = j + dc_offset_y;
+                                vec4 fb_color = {buffer[(y_off*vinfo.xres+x_off)*4],
+                                    buffer[(y_off*vinfo.xres+x_off)*4+1],
+                                    buffer[(y_off*vinfo.xres+x_off)*4+2],
+                                    buffer[(y_off*vinfo.xres+x_off)*4+3]};
+                                if (fb_color.w == 87)
+                                    paint_pixel(x_off, y_off, (vec4){0,0,0,0}, buffer, vinfo);
                             }
                         }
                     }
@@ -326,35 +310,43 @@ int main(int argc, char *argv[])
             }
         }
 
-        // For some reason, the fb doesn't update fast enough
-        // unless we print something first
+        if (RENDER_BOUNDING_BOX) {
+            // Draw top and bottom edges
+            for (int x = (int)min_coords.x; x <= (int)max_coords.x; x++) {
+                paint_pixel(x, (int)min_coords.y, (vec4){1,1,1,1}, buffer, vinfo);
+                paint_pixel(x, (int)max_coords.y, (vec4){1,1,1,1}, buffer, vinfo);
+            }
+            // Draw left and right edges
+            for (int y = (int)min_coords.y; y <= (int)max_coords.y; y++) {
+                paint_pixel((int)min_coords.x, y, (vec4){1,1,1,1}, buffer, vinfo);
+                paint_pixel((int)max_coords.x, y, (vec4){1,1,1,1}, buffer, vinfo);
+            }
+        }
+        if (BLUR_ANTIALIAS)
+            blur_pixels(buffer, min_coords, max_coords, vinfo.xres, vinfo.yres);
+
+
         printf("\r");
         fflush(stdout);
         memcpy(fbp, buffer, 4 * vinfo.xres * vinfo.yres);
-        
+
         clock_gettime(CLOCK_MONOTONIC_RAW, &end);
         delta_us = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_nsec - start.tv_nsec) / 1000;
 
-        if (FRAME_LIMIT > 0)
-        {
-            if (delta_us < 1000000.0 / FRAME_LIMIT)
-            {
+        if (FRAME_LIMIT > 0) {
+            if (delta_us < 1000000.0 / FRAME_LIMIT) {
                 usleep(1000000.0 / FRAME_LIMIT - delta_us);
                 delta = 1.0 / FRAME_LIMIT;
-            }
-            else
-            {
+            } else {
                 delta = delta_us/1000000.0;
             }
-        }
-        else
-        {
+        } else {
             delta = delta_us/1000000.0;
         }
     }
     munmap(fbp, screensize);
     close(fbfd);
     free(buffer);
-
     return 0;
 }
+

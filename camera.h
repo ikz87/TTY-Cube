@@ -4,6 +4,7 @@ typedef struct camera
                          // center and the focal point. Use negative values
                          // This kinda works like FOV in games
 
+    float time; // Self explanatory
     vec2 dimensions;
 
     // Transformations 
@@ -113,113 +114,102 @@ camera setup_camera(camera camera)
 
 
 // Gets a pixel from the end of a ray projected to an axis
-vec4 get_pixel_from_projection(float t, int face, camera camera, vec3 focal_vector, light3 light)
-{
-    // If the point we end up in is behind our camera, don't "render" it
-    if (t < 1)
-    {
+vec4 get_pixel_from_projection(
+    float t, int face, camera camera, vec3 focal_vector, light3 light,
+    float cube_rotation_y, vec3 local_focal_point, vec3 local_focal_vector
+) {
+    if (t < 1) {
         return (vec4){0, 0, 0, 0};
     }
 
-    // Then we multiply our focal vector by t and add our focal point to it 
-    vec3 intersection = add_vec3(scale_vec3(focal_vector, t), camera.focal_point);
-    
+    // Intersection in local (cube) space
+    vec3 intersection_local = add_vec3(
+        scale_vec3(local_focal_vector, t), local_focal_point
+    );
+
+    // Rotate intersection back to world space
+    vec3 intersection = rotate_vec3_y(intersection_local, cube_rotation_y);
 
     // Save necessary coordinates and normal vector
-    // (different cube faces need different coords)
     vec2 cam_coords;
-    vec3 normal;
-    switch (face) 
-    {
+    vec3 normal_local;
+    switch (face) {
         case 0:
-            cam_coords = (vec2){intersection.x, intersection.y};
-            normal = (vec3){0, 0, 1};
+            cam_coords = (vec2){intersection_local.x, intersection_local.y};
+            normal_local = (vec3){0, 0, 1};
             break;
         case 1:
-            cam_coords = (vec2){intersection.x, intersection.y};
-            normal = (vec3){0, 0, -1};
+            cam_coords = (vec2){intersection_local.x, intersection_local.y};
+            normal_local = (vec3){0, 0, -1};
             break;
         case 2:
-            cam_coords = (vec2){intersection.z, intersection.y};
-            normal = (vec3){1, 0, 0};
+            cam_coords = (vec2){intersection_local.z, intersection_local.y};
+            normal_local = (vec3){1, 0, 0};
             break;
         case 3:
-            cam_coords = (vec2){intersection.z, intersection.y};
-            normal = (vec3){-1, 0, 0};
+            cam_coords = (vec2){intersection_local.z, intersection_local.y};
+            normal_local = (vec3){-1, 0, 0};
             break;
         case 4:
-            cam_coords = (vec2){intersection.z, intersection.x};
-            normal = (vec3){0, 1, 0};
+            cam_coords = (vec2){intersection_local.z, intersection_local.x};
+            normal_local = (vec3){0, 1, 0};
             break;
         case 5:
-            cam_coords = (vec2){intersection.z, intersection.x};
-            normal = (vec3){0, -1, 0};
+            cam_coords = (vec2){intersection_local.z, intersection_local.x};
+            normal_local = (vec3){0, -1, 0};
             break;
     }
-    cam_coords.x += SIDE_LENGTH/2;
-    cam_coords.y += SIDE_LENGTH/2;
-    
+    cam_coords.x += SIDE_LENGTH / 2;
+    cam_coords.y += SIDE_LENGTH / 2;
+
     vec4 pixel;
-    // If pixel is outside of the region occupied by the cube
-    // return a completely transparent color
-    if (cam_coords.x > SIDE_LENGTH - 1 || 
+    if (cam_coords.x > SIDE_LENGTH - 1 ||
         cam_coords.y > SIDE_LENGTH - 1 ||
-        cam_coords.x <0 || cam_coords.y <0)
-    {
-        return (vec4){0,0,0,0};
-    }
-    // Make edges a different color
-    else if (cam_coords.x > SIDE_LENGTH - EDGE_THICKNESS - 1 || 
-            cam_coords.y > SIDE_LENGTH - EDGE_THICKNESS - 1 ||
-            cam_coords.x < EDGE_THICKNESS || cam_coords.y < EDGE_THICKNESS)
-    {
+        cam_coords.x < 0 || cam_coords.y < 0) {
+        return (vec4){0, 0, 0, 0};
+    } else if (cam_coords.x > SIDE_LENGTH - EDGE_THICKNESS - 1 ||
+               cam_coords.y > SIDE_LENGTH - EDGE_THICKNESS - 1 ||
+               cam_coords.x < EDGE_THICKNESS || cam_coords.y < EDGE_THICKNESS) {
         pixel = EDGE_COLOR;
-    }
-    else
-    {
-        // Fetch pixel from shader
+    } else {
         pixel = SHADER(cam_coords, face);
     }
 
-    // Apply shading 
-    if (SHADING)
-    {
-        // Diffuse lighting
-        double base_light = 0.2;
-        vec3 incident = normalize_vec3(subtract_vec3(light.position, intersection));
-        double dot = dot_product_vec3(incident, normal);
-        vec3 diffuse = scale_vec3(light.color, (fmin(dot,0)-base_light)/(-1-base_light));
-        pixel.x *= diffuse.x;
-        pixel.y *= diffuse.y;
-        pixel.z *= diffuse.z;
+    // Rotate normal to world space for shading
+    vec3 normal = rotate_vec3_y(normal_local, cube_rotation_y);
 
-        // Specular highlight
-        if (SPECULAR_HIGHLIGHT)
-        {
-            double smoothness = 0.2;
-            vec3 reflected = subtract_vec3(incident, scale_vec3(normal, 2*dot));
-            vec3 highlight = scale_vec3(light.color, 
-                    (fmax(0,dot_product_vec3(normalize_vec3(focal_vector), reflected))));
-            highlight.x = pow(highlight.x, smoothness * 100);
-            highlight.y = pow(highlight.y, smoothness * 100);
-            highlight.z = pow(highlight.z, smoothness * 100);
-            pixel.x += highlight.x;
-            pixel.y += highlight.y;
-            pixel.z += highlight.z;
-        }
+    // Apply shading
+    if (SHADING) {
+        // Rotate light into local space
+vec3 local_light_position = rotate_vec3_y(light.position, -cube_rotation_y);
 
-        // The shading model doesn't support transparency
-        pixel.w = 1;
+// Diffuse lighting
+double base_light = 0.2;
+vec3 incident = normalize_vec3(subtract_vec3(local_light_position, intersection_local));
+double dot = dot_product_vec3(incident, normal_local);
+vec3 diffuse = scale_vec3(light.color, (fmin(dot, 0) - base_light) / (-1 - base_light));
+pixel.x *= diffuse.x;
+pixel.y *= diffuse.y;
+pixel.z *= diffuse.z;
+
+// Specular highlight
+if (SPECULAR_HIGHLIGHT) {
+    double smoothness = 0.2;
+    vec3 view_dir = normalize_vec3(scale_vec3(local_focal_vector, -1));
+    vec3 reflected = subtract_vec3(incident, scale_vec3(normal_local, 2 * dot));
+    double spec = fmax(0, -dot_product_vec3(view_dir, reflected));
+    vec3 highlight = scale_vec3(light.color, pow(spec, smoothness * 100));
+    pixel.x += highlight.x;
+    pixel.y += highlight.y;
+    pixel.z += highlight.z;
+}
+pixel.w = 1;
     }
 
     return pixel;
 }
 
-// Combines colors using alpha
-// Got this from https://stackoverflow.com/questions/64701745/how-to-blend-colours-with-transparency
-// Not sure how it works honestly lol
-vec4 alpha_composite(vec4 color1, vec4 color2)
-{
+vec4 alpha_composite(vec4 color1, vec4 color2) {
     float ar = color1.w + color2.w - (color1.w * color2.w);
     float asr = color2.w / ar;
     float a1 = 1 - asr;
@@ -233,99 +223,109 @@ vec4 alpha_composite(vec4 color1, vec4 color2)
     return outcolor;
 }
 
-
-// Gets a pixel through the camera using coords as coordinates in
-// the camera plane
-vec4 get_pixel_through_camera(int x, int y, camera camera, light3 light)
-{
+vec4 get_pixel_through_camera(int x, int y, camera camera, light3 light) {
     // Offset coords
     x -= camera.center_offset.x;
     y -= camera.center_offset.y;
 
     // Find the pixel 3d position using the camera vector basis
-    vec3 pixel_3dposition = add_vec3(camera.center_point, 
-                            add_vec3(scale_vec3(camera.base_x, x),
-                                    scale_vec3(camera.base_y, y)));
+    vec3 pixel_3dposition = add_vec3(
+        camera.center_point,
+        add_vec3(
+            scale_vec3(camera.base_x, x),
+            scale_vec3(camera.base_y, y)
+        )
+    );
 
-    // Get the vector going from the focal point to the pixel in 3d sapace
+    // Get the vector going from the focal point to the pixel in 3d space
     vec3 focal_vector = subtract_vec3(pixel_3dposition, camera.focal_point);
 
-    // We need 6 planes, one for each face of the cube, they all follow the plane EQ
-    // ax + by + cz + d
-    static const float a[] = {0,0,
-                 1,1,
-                 0,0};
-    static const float b[] = {0,0,
-                 0,0,
-                 1,1};
-    static const float c[] = {1,1,
-                 0,0,
-                 0,0};
-    static const float d[] = {-SIDE_LENGTH/2.0,SIDE_LENGTH/2.0 - 1,
-                 -SIDE_LENGTH/2.0,SIDE_LENGTH/2.0 - 1,
-                 -SIDE_LENGTH/2.0,SIDE_LENGTH/2.0 - 1};
+    // --- CUBE ROTATION ---
+    float cube_rotation_y = camera.time*4*PI/1000; // or any function of time
 
-    // Then there's a line going from our focal point to each of the planes 
-    // which we can describe as:
-    // x(t) = focal_point.x + focal_vector.x * t
-    // y(t) = focal_point.y + focal_vector.y * t
-    // z(t) = focal_point.z + focal_vector.z * t
-    // We substitute x, y and z with x(t), y(t) and z(t) in the plane EQ
-    // Solving for t we get:
-    vec2 t[6]; // we use a vec2 to also store the plane that was hit
+    // Rotate the ray into the cube's local space
+    vec3 local_focal_point = rotate_vec3_y(camera.focal_point, -cube_rotation_y);
+    vec3 local_focal_vector = rotate_vec3_y(focal_vector, -cube_rotation_y);
 
-    vec4 projection_pixels[6]; 
-    vec4 blended_pixels = (vec4){0,0,0,0};
+    // Cube face planes (in local space)
+    static const float a[] = {0, 0, 1, 1, 0, 0};
+    static const float b[] = {0, 0, 0, 0, 1, 1};
+    static const float c[] = {1, 1, 0, 0, 0, 0};
+    static const float d[] = {
+        -SIDE_LENGTH / 2.0, SIDE_LENGTH / 2.0 - 1,
+        -SIDE_LENGTH / 2.0, SIDE_LENGTH / 2.0 - 1,
+        -SIDE_LENGTH / 2.0, SIDE_LENGTH / 2.0 - 1
+    };
+
+    vec2 t[6];
+    vec4 projection_pixels[6];
+    vec4 blended_pixels = (vec4){0, 0, 0, 0};
     int last_valid_t = 0;
 
-    for (int i = 0; i < 6; i++)
-    {
-        t[i].x = (d[i] 
-                - a[i]*camera.focal_point.x 
-                - b[i]*camera.focal_point.y 
-                - c[i]*camera.focal_point.z)
-            / (a[i]*focal_vector.x 
-                    + b[i]*focal_vector.y 
-                    + c[i]*focal_vector.z);
+    for (int i = 0; i < 6; i++) {
+        t[i].x = (d[i]
+                  - a[i] * local_focal_point.x
+                  - b[i] * local_focal_point.y
+                  - c[i] * local_focal_point.z)
+                 / (a[i] * local_focal_vector.x
+                    + b[i] * local_focal_vector.y
+                    + c[i] * local_focal_vector.z);
         t[i].y = i;
 
-        // We get the pixel through projection
-        projection_pixels[i] = get_pixel_from_projection(t[i].x, 
-                round(t[i].y),
-                camera,
-                focal_vector, light);
+        projection_pixels[i] = get_pixel_from_projection(
+            t[i].x, round(t[i].y), camera, focal_vector, light,
+            cube_rotation_y, local_focal_point, local_focal_vector
+        );
 
-        // Check if pixel is not completely transparent
-        if (projection_pixels[i].w > 0)
-        {
-            // Blend the 2 pixels that got hit by our focal vector
-            if (t[i].x > t[last_valid_t].x)
-            {
-                if (!SHADING)
-                {
-                    blended_pixels = alpha_composite(projection_pixels[i],
-                            projection_pixels[last_valid_t]);
-                }
-                else
-                {
+        if (projection_pixels[i].w > 0) {
+            if (t[i].x > t[last_valid_t].x) {
+                if (!SHADING) {
+                    blended_pixels = alpha_composite(
+                        projection_pixels[i], projection_pixels[last_valid_t]
+                    );
+                } else {
                     blended_pixels = projection_pixels[last_valid_t];
                 }
-            }
-            else if (t[i].x < t[last_valid_t].x)
-            {
-                if (!SHADING)
-                {
-                    blended_pixels = alpha_composite(projection_pixels[last_valid_t],
-                            projection_pixels[i]);
-                }
-                else
-                {
+            } else if (t[i].x < t[last_valid_t].x) {
+                if (!SHADING) {
+                    blended_pixels = alpha_composite(
+                        projection_pixels[last_valid_t], projection_pixels[i]
+                    );
+                } else {
                     blended_pixels = projection_pixels[i];
                 }
             }
-
             last_valid_t = i;
         }
     }
     return blended_pixels;
 }
+
+vec2 project_vertex_to_screen(vec3 vertex, camera cam) {
+    // Vector from focal point to vertex
+    vec3 focal_vector = subtract_vec3(vertex, cam.focal_point);
+
+    // Project onto camera plane (find t where the ray hits the camera plane)
+    // The camera plane is at cam.center_point, normal is cam.base_z
+    double denom = dot_product_vec3(focal_vector, cam.base_z);
+    if (fabs(denom) < 1e-6) denom = 1e-6; // Avoid division by zero
+
+    double t = -cam.focal_offset / denom;
+
+    // Intersection point on camera plane
+    vec3 intersection = add_vec3(cam.focal_point, scale_vec3(focal_vector, t));
+
+    // Offset from center_point in camera basis
+    vec3 offset = subtract_vec3(intersection, cam.center_point);
+
+    // Project onto camera's x and y basis
+    double x = dot_product_vec3(offset, cam.base_x);
+    double y = dot_product_vec3(offset, cam.base_y);
+
+    // Convert to screen coordinates (centered)
+    x += cam.dimensions.x * 0.5;
+    y += cam.dimensions.y * 0.5;
+
+    return (vec2){x, y};
+}
+
